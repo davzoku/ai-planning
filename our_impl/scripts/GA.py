@@ -3,6 +3,8 @@ GA.py: A script implementing a genetic algorithm for promotion optimization usin
 """
 
 import time
+import numpy as np
+import matplotlib.pyplot as plt
 from pymoo.core.problem import ElementwiseProblem
 from pymoo.optimize import minimize
 from pymoo.algorithms.soo.nonconvex.ga import GA
@@ -18,6 +20,7 @@ from pymoo.operators.mutation.pm import PolynomialMutation
 from pymoo.operators.repair.rounding import RoundingRepair
 from pymoo.core.mutation import Mutation
 from pymoo.core.crossover import Crossover
+
 
 POP_SIZE = 10
 CFG = {
@@ -423,3 +426,18 @@ if __name__ == "__main__":
 
     print(f"Custom operators solution quality: {res_custom.F}")
     print(f"Vanilla operators solution quality: {res_vanilla.F}")
+
+    # Plotting history (https://pymoo.org/misc/convergence.html)
+    n_evals = np.array([e.evaluator.n_eval for e in res_custom.history])
+    opt = np.array([e.opt[0].F for e in res_custom.history])
+    plt.plot(n_evals, opt, "--", label='res_custom')
+
+    n_evals = np.array([e.evaluator.n_eval for e in res_vanilla.history])
+    opt = np.array([e.opt[0].F for e in res_vanilla.history])
+    plt.plot(n_evals, opt, "--", label='res_vanilla')
+
+    plt.title("Convergence of res_custom & res_vanilla")
+    plt.xlabel('n_eval')
+    plt.ylabel('f_min')
+    plt.legend(loc='upper right')
+    plt.show()
