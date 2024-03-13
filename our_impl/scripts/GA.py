@@ -194,17 +194,38 @@ class SwapCrossover(Crossover):
         # Randomly select solutions to perform crossover
         do_crossover = np.random.random() < self.prob
 
+        # random crossover with the same row
+        # if do_crossover:
+        # # Randomly choose rows to swap
+        # row_indices = np.random.choice(
+        #     self.rows, self.n_rows_to_swap, replace=False
+        # )
+
+        # # Swap the rows between parents
+        # for row_idx in row_indices:
+        #     p1_reshaped[0, row_idx], p2_reshaped[0, row_idx] = (
+        #         p2_reshaped[0, row_idx],
+        #         p1_reshaped[0, row_idx],
+        #     )
+
         if do_crossover:
             # Randomly choose rows to swap
-            row_indices = np.random.choice(
+            row_indices_p1 = np.random.choice(
                 self.rows, self.n_rows_to_swap, replace=False
             )
-
-            # Swap the rows between parents
-            for row_idx in row_indices:
-                p1_reshaped[0, row_idx], p2_reshaped[0, row_idx] = (
-                    p2_reshaped[0, row_idx],
-                    p1_reshaped[0, row_idx],
+            row_indices_p2 = np.random.choice(
+                self.rows, self.n_rows_to_swap, replace=False
+            )
+            random_swaps = zip(row_indices_p1, row_indices_p2)
+            # debug
+            # print(row_indices_p1, row_indices_p2)
+            # for pair in random_swaps:
+            #     print(pair)
+            # Swap the selected rows between parents
+            for idx_p1, idx_p2 in random_swaps:
+                p1_reshaped[0, idx_p1], p2_reshaped[0, idx_p2] = (
+                    p2_reshaped[0, idx_p2].copy(),
+                    p1_reshaped[0, idx_p1].copy(),
                 )
 
         Q = np.copy(X)
@@ -365,7 +386,7 @@ if __name__ == "__main__":
         pop_size=100,
         sampling=SKUPopulationSampling(cfg=problem.cfg, pop_size=POP_SIZE),
         mutation=SwapMutation(cfg=problem.cfg, prob=0.9),
-        crossover=SwapCrossover(cfg=problem.cfg, prob=0.9, n_rows_to_swap=5),
+        crossover=SwapCrossover(cfg=problem.cfg, prob=0.9, n_rows_to_swap=10),
         eliminate_duplicates=True,
     )
 
