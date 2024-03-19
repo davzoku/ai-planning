@@ -6,10 +6,14 @@ from collections import OrderedDict
 #from sklearn.metrics import mean_squared_error, mean_absolute_error, mean_absolute_percentage_error
 from helper_demand_functions import *
 
-st.title('AI Planning proj app')
+st.title('Promotion optimization for retail stores')
 #st.set_page_config(page_title = "AI Planning") 
-st.title("AI Planning proj") 
 st.sidebar.success("navigation bar")
+st.image('cover_img.png')
 
-st.text('How to use this app?')
-
+st.header('How to use this application')
+st.markdown("""
+    1. Upload Data
+    2. Run Demand Function to generate demand predictions
+    3. Run GA to calculate predicted costs and profits
+    """)
