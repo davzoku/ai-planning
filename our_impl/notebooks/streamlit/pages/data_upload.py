@@ -29,14 +29,25 @@ class Upload:
             st.error("No file uploaded. Please upload a CSV file")
         
 
-store_data = Upload.upload_store_data()
-time_data = Upload.upload_time_data()
+# def upload_store():
+#     data = Upload.upload_store_data()
+#     df = pd.read_csv(data)
+#     st.write("Product datatset loaded!")
+#     return data
+
+# def upload_time():
+#     data = Upload.upload_time_data()
+#     df = pd.read_csv(data)
+#     st.write("time datatset uploaded")
+#     return data
+
+store_data =  Upload.upload_store_data()
+time_data =  Upload.upload_time_data()
 
 if store_data:
     data = pd.read_csv(store_data)
     st.write("Product datatset:")
     st.write(data)
-    
     
 if time_data:
     calender = pd.read_csv(time_data)

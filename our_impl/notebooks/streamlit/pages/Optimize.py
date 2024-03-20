@@ -18,6 +18,9 @@ from pymoo.operators.repair.rounding import RoundingRepair
 from pymoo.core.mutation import Mutation
 from pymoo.core.crossover import Crossover
 import streamlit as st
+from pages.data_upload import upload_store, upload_time
+import pandas as pd
+
 
 def init_price_list(x: int, y: int) -> np.ndarray:
     """
@@ -360,7 +363,7 @@ class PromotionOptimizationProblem(ElementwiseProblem):
         return profit
 
 
-with st.form(key='all_inputs_form'):
+with st.form(key='all_inputs_form'): 
     c1, c2, c3, c4 = st.columns(4)
     with c1:
         pop_size = st.number_input("Pop size", value=0)
@@ -405,6 +408,7 @@ if submit_button:
 
 if __name__ == "__main__":
     try:
+        
         problem = PromotionOptimizationProblem()
         algo_custom_ops = GA(
             pop_size=100,

@@ -6,6 +6,10 @@ from collections import OrderedDict
 #from sklearn.metrics import mean_squared_error, mean_absolute_error, mean_absolute_percentage_error
 #from helper_demand_functions import *
 
+st.set_page_config(
+    page_title="prettymapp", page_icon="🖼️", initial_sidebar_state="collapsed"
+)
+
 st.title('Promotion optimization for retail stores')
 #st.set_page_config(page_title = "AI Planning") 
 st.sidebar.success("navigation bar")
