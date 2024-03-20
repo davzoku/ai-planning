@@ -7,7 +7,9 @@ from collections import OrderedDict
 #from helper_demand_functions import *
 
 st.set_page_config(
-    page_title="prettymapp", page_icon="🖼️", initial_sidebar_state="collapsed"
+    page_title="Promotion optimizer",
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
 st.title('Promotion optimization for retail stores')
@@ -18,6 +20,5 @@ st.image('cover_img.png')
 st.header('How to use this application')
 st.markdown("""
     1. Upload Data
-    2. Run Demand Function to generate demand predictions
-    3. Run GA to calculate predicted costs and profits
+    2. Optimize 
     """)

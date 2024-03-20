@@ -18,9 +18,16 @@ from pymoo.operators.repair.rounding import RoundingRepair
 from pymoo.core.mutation import Mutation
 from pymoo.core.crossover import Crossover
 import streamlit as st
-from pages.data_upload import upload_store, upload_time
 import pandas as pd
+import pages.Data_upload
+from pages.Data_upload import Solution
 
+
+if 'result' in st.session_state:
+    st.write("Data loaded!")
+    st.write(st.session_state['result'])
+else:
+    st.write("Please upload data")
 
 def init_price_list(x: int, y: int) -> np.ndarray:
     """
