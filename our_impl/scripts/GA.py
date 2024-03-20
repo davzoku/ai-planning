@@ -354,6 +354,10 @@ class PromotionOptimizationProblem(ElementwiseProblem):
         profit = 0
         discounted_values = np.zeros_like(PRICE_LIST)
 
+        # use this to get the simplified 3 columns
+        # discount, price, display
+        converted_sol = self._to_discount_values(can_sol)
+
         # TODO: For loop to cater to demand function calculation,  also to include display and feature effect on profit
         for i in range(len(can_sol)):
             if np.all(can_sol[i, : self.price_opt_num] == 0):
@@ -381,6 +385,36 @@ class PromotionOptimizationProblem(ElementwiseProblem):
         # Calculate profit
         profit = np.sum(discounted_values)
         return profit
+
+    def _to_discount_values(self, can_sol):
+        """
+        Converts a binary array to a discount values array with preserved columns.
+
+        Transforms the first four binary columns of an input array into a single
+        discount column based on predefined discount rates (0.8, 0.6, 0.4, 0.2).
+        The display and feature columns from the input are preserved in the output.
+
+        Parameters:
+        - can_sol (numpy.ndarray): The input binary array with shape (n, 6).
+
+        Returns:
+        - numpy.ndarray: The transformed array with shape (n, 3), including the
+        discount value and the original last two columns.
+        """
+        discount_values = np.array([0.8, 0.6, 0.4, 0.2])
+        result = np.zeros((can_sol.shape[0], 3))
+
+        discount_cols = can_sol[:, :4]
+
+        for i, row in enumerate(can_sol):
+            if row.sum() > 0:
+                discount_index = np.argmax(row == 1)
+                result[i, 0] = discount_values[discount_index]
+            result[i, 1] = row[4]
+            result[i, 2] = row[5]
+            # print(f"original row = {row}, converted = {result[i]}")
+
+        return result
 
 
 if __name__ == "__main__":
@@ -430,14 +464,14 @@ if __name__ == "__main__":
     # Plotting history (https://pymoo.org/misc/convergence.html)
     n_evals = np.array([e.evaluator.n_eval for e in res_custom.history])
     opt = np.array([e.opt[0].F for e in res_custom.history])
-    plt.plot(n_evals, opt, "--", label='res_custom')
+    plt.plot(n_evals, opt, "--", label="res_custom")
 
     n_evals = np.array([e.evaluator.n_eval for e in res_vanilla.history])
     opt = np.array([e.opt[0].F for e in res_vanilla.history])
-    plt.plot(n_evals, opt, "--", label='res_vanilla')
+    plt.plot(n_evals, opt, "--", label="res_vanilla")
 
     plt.title("Convergence of res_custom & res_vanilla")
-    plt.xlabel('n_eval')
-    plt.ylabel('f_min')
-    plt.legend(loc='upper right')
+    plt.xlabel("n_eval")
+    plt.ylabel("f_min")
+    plt.legend(loc="upper right")
     plt.show()
