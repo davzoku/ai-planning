@@ -380,10 +380,6 @@ class PromotionOptimizationProblem(ElementwiseProblem):
         """
         Converts a binary array to a discount values array with preserved columns.
 
-<<<<<<< HEAD
-with st.form(key='all_inputs_form'): 
-    c1, c2, c3, c4 = st.columns(4)
-=======
         Transforms the first four binary columns of an input array into a single
         discount column based on predefined discount rates (0.8, 0.6, 0.4, 0.2).
         The display and feature columns from the input are preserved in the output.
@@ -413,7 +409,6 @@ with st.form(key='all_inputs_form'):
 
 with st.form(key="all_inputs_form"):
     c1, c2 = st.columns(2)
->>>>>>> my_version
     with c1:
         sku_num = st.text_input("Number of SKUs")
     with c2:
