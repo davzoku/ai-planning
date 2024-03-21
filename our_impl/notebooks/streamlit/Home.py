@@ -2,10 +2,13 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from collections import OrderedDict
+import sys
+import os
 #from sklearn.linear_model import ElasticNetCV, ElasticNet
 #from sklearn.metrics import mean_squared_error, mean_absolute_error, mean_absolute_percentage_error
 #from helper_demand_functions import *
-from utils import utils
+
+from my_utils import utils
 
 def local_css(file_name):
     with open(file_name) as f:
