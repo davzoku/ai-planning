@@ -1,4 +1,3 @@
-
 import time
 import numpy as np
 import matplotlib.pyplot as plt
@@ -7,6 +6,7 @@ from pymoo.optimize import minimize
 from pymoo.algorithms.soo.nonconvex.ga import GA
 import numpy as np
 from pymoo.core.sampling import Sampling
+from utils import utils
 
 from pymoo.operators.crossover.pntx import (
     PointCrossover,
@@ -29,6 +29,8 @@ if 'result' in st.session_state:
 else:
     st.write("Please upload data")
 
+utils.add_logo()
+
 def init_price_list(x: int, y: int) -> np.ndarray:
     """
     Initialize the price list based on the given dimensions.
@@ -43,6 +45,7 @@ def init_price_list(x: int, y: int) -> np.ndarray:
     size = x * y
     values = np.arange(size * 10, 0, -10)
     return values
+
 
 class SKUPopulationSampling(Sampling):
     """
@@ -341,6 +344,10 @@ class PromotionOptimizationProblem(ElementwiseProblem):
         profit = 0
         discounted_values = np.zeros_like(PRICE_LIST)
 
+        # use this to get the simplified 3 columns
+        # discount, price, display
+        converted_sol = self._to_discount_values(can_sol)
+
         # TODO: For loop to cater to demand function calculation,  also to include display and feature effect on profit
         for i in range(len(can_sol)):
             if np.all(can_sol[i, : self.price_opt_num] == 0):
@@ -369,34 +376,86 @@ class PromotionOptimizationProblem(ElementwiseProblem):
         profit = np.sum(discounted_values)
         return profit
 
+    def _to_discount_values(self, can_sol):
+        """
+        Converts a binary array to a discount values array with preserved columns.
 
+<<<<<<< HEAD
 with st.form(key='all_inputs_form'): 
     c1, c2, c3, c4 = st.columns(4)
+=======
+        Transforms the first four binary columns of an input array into a single
+        discount column based on predefined discount rates (0.8, 0.6, 0.4, 0.2).
+        The display and feature columns from the input are preserved in the output.
+
+        Parameters:
+        - can_sol (numpy.ndarray): The input binary array with shape (n, 6).
+
+        Returns:
+        - numpy.ndarray: The transformed array with shape (n, 3), including the
+        discount value and the original last two columns.
+        """
+        discount_values = np.array([0.8, 0.6, 0.4, 0.2])
+        result = np.zeros((can_sol.shape[0], 3))
+
+        discount_cols = can_sol[:, :4]
+
+        for i, row in enumerate(can_sol):
+            if row.sum() > 0:
+                discount_index = np.argmax(row == 1)
+                result[i, 0] = discount_values[discount_index]
+            result[i, 1] = row[4]
+            result[i, 2] = row[5]
+            # print(f"original row = {row}, converted = {result[i]}")
+
+        return result
+
+
+with st.form(key="all_inputs_form"):
+    c1, c2 = st.columns(2)
+>>>>>>> my_version
     with c1:
-        pop_size = st.number_input("Pop size", value=0)
+        sku_num = st.text_input("Number of SKUs")
     with c2:
-        sku_num = st.text_input('SKU number')
-    with c3:
-        week_horizon = st.number_input('Week horizon', value=0)
-    with c4:
-        price_opt_number = st.number_input('Pricing option number', value=0)
-    
+        week_horizon = st.number_input("Week Horizon", value=0)
+
     st.write("---")
 
-    c5, c6, c7, c8 = st.columns(4)
+    c3, c4, c5 = st.columns(3)
+    # with c5:
+    #     ndf = st.number_input("Number of display features", value=0, key="ndf")
+    with c3:
+        lim_pro_per_cate_xu = st.number_input(
+            "Max Number of Promotion Items per Week", value=0, key="lim_pro_per_cate_xu"
+        )
+    with c4:
+        lim_dis_per_cate_xu = st.number_input(
+            "Max Number of Display Items per Week", value=0, key="lim_dis_per_cate_xu"
+        )
     with c5:
-        ndf = st.number_input('Number of display features', value=0, key='ndf')
-    with c6:
-        lim_pro_per_cate_xu = st.number_input('Number of promotion items upper bound', value=0, key='lim_pro_per_cate_xu')
-    with c7:
-        lim_dis_per_cate_xu = st.number_input('Number of display items upper bound', value=0, key='lim_dis_per_cate_xu')
-    with c8:
-        lim_fea_per_cate_xu = st.number_input('Number of feature items upper bound', value=0, key='lim_fea_per_cate_xu')
+        lim_fea_per_cate_xu = st.number_input(
+            "Max Number of Feature Items per Week", value=0, key="lim_fea_per_cate_xu"
+        )
 
-    submit_button = st.form_submit_button(label='Submit')
-    
+    st.write("---")
+
+    c6, c7 = st.columns(2)
+
+    with c6:
+        pop_size = st.number_input("GA Population Size", value=10, key="pop_size")
+    with c7:
+        gen_size = st.number_input(
+            "GA Number of Generations", value=100, key="gen_size"
+        )
+
+    submit_button = st.form_submit_button(label="Submit")
+
 if submit_button:
     POP_SIZE = pop_size
+    GEN_SIZE = gen_size
+    # Fixed Variables
+    price_opt_number = 4
+    ndf = 2
     CFG = {
         "sku_num": int(sku_num),  # no of sku
         "h": week_horizon,  # week horizon
@@ -407,10 +466,10 @@ if submit_button:
         "lim_fea_per_cate_xu": lim_fea_per_cate_xu,  # num of feature items upper bound
         "constraint_num": 2,  # simplify to 2 high level constraints
     }
-    
-    #st.write(CFG)
+
+    # st.write(CFG)
     PRICE_LIST = init_price_list(CFG["sku_num"], CFG["h"])
-    #st.write(PRICE_LIST)
+    # st.write(PRICE_LIST)
 
 
 if __name__ == "__main__":
@@ -418,7 +477,7 @@ if __name__ == "__main__":
         
         problem = PromotionOptimizationProblem()
         algo_custom_ops = GA(
-            pop_size=100,
+            pop_size=POP_SIZE,
             sampling=SKUPopulationSampling(cfg=problem.cfg, pop_size=POP_SIZE),
             mutation=SwapMutation(cfg=problem.cfg, prob=0.9),
             crossover=SwapCrossover(cfg=problem.cfg, prob=0.9, n_rows_to_swap=10),
@@ -426,7 +485,7 @@ if __name__ == "__main__":
         )
 
         algo_vanilla_ops = GA(
-            pop_size=100,
+            pop_size=POP_SIZE,
             sampling=SKUPopulationSampling(cfg=problem.cfg, pop_size=POP_SIZE),
             crossover=PointCrossover(prob=0.8, n_points=2),
             mutation=PolynomialMutation(prob=0.3, repair=RoundingRepair()),
@@ -435,7 +494,12 @@ if __name__ == "__main__":
 
         start_time_custom = time.time()
         res_custom = minimize(
-            problem, algo_custom_ops, ("n_gen", 10), seed=2, save_history=True, verbose=True
+            problem,
+            algo_custom_ops,
+            ("n_gen", GEN_SIZE),
+            seed=2,
+            save_history=True,
+            verbose=True,
         )
         end_time_custom = time.time()
 
@@ -443,7 +507,7 @@ if __name__ == "__main__":
         res_vanilla = minimize(
             problem,
             algo_vanilla_ops,
-            ("n_gen", 10),
+            ("n_gen", GEN_SIZE),
             seed=2,
             save_history=True,
             verbose=True,
@@ -455,28 +519,28 @@ if __name__ == "__main__":
 
         st.success(f"Custom operators time: {time_custom} seconds")
         st.success(f"Vanilla operators time: {time_vanilla} seconds")
-        #print(f"Custom operators time: {time_custom} seconds")
-        #print(f"Vanilla operators time: {time_vanilla} seconds")
+        # print(f"Custom operators time: {time_custom} seconds")
+        # print(f"Vanilla operators time: {time_vanilla} seconds")
         st.success(f"Custom operators solution quality: {res_custom.F}")
         st.success(f"Vanilla operators solution quality: {res_vanilla.F}")
-        #print(f"Custom operators solution quality: {res_custom.F}")
-        #print(f"Vanilla operators solution quality: {res_vanilla.F}")
+        # print(f"Custom operators solution quality: {res_custom.F}")
+        # print(f"Vanilla operators solution quality: {res_vanilla.F}")
 
         # Plotting history (https://pymoo.org/misc/convergence.html)
         fig, ax = plt.subplots()
         n_evals = np.array([e.evaluator.n_eval for e in res_custom.history])
         opt = np.array([e.opt[0].F for e in res_custom.history])
-        ax.plot(n_evals, opt, "--", label='res_custom')
+        ax.plot(n_evals, opt, "--", label="res_custom")
 
         n_evals = np.array([e.evaluator.n_eval for e in res_vanilla.history])
         opt = np.array([e.opt[0].F for e in res_vanilla.history])
-        ax.plot(n_evals, opt, "--", label='res_vanilla')
+        ax.plot(n_evals, opt, "--", label="res_vanilla")
 
         ax.set_title("Convergence of res_custom & res_vanilla")
-        ax.set_xlabel('n_eval')
-        ax.set_ylabel('f_min')
-        ax.legend(loc='upper right')
-        #plt.show()
+        ax.set_xlabel("n_eval")
+        ax.set_ylabel("f_min")
+        ax.legend(loc="upper right")
+        # plt.show()
         st.pyplot(fig)
     except:
-        'Please input the values for the GA to run :)'
+        "Please input the values for the GA to run :)"
