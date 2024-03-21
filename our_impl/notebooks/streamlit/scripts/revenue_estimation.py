@@ -39,8 +39,10 @@ class RevenueEstimation:
         histr = start - 1
         end = start + period
 
+        sku_list = sorted(sku_list)
+
         idx_frame = [
-            (SKU, Time_ID) for SKU in sku_list for Time_ID in range(start, end)
+            (SKU, Time_ID) for Time_ID in range(start, end) for SKU in sku_list
         ]
         idx_frame = pd.DataFrame(idx_frame, columns=["SKU", "Time_ID"])
 
@@ -52,6 +54,7 @@ class RevenueEstimation:
 
         ## Preapare GA dataframe
         ga_df = ga_output.copy()
+        ga_df['Discount'] = 1 + ga_df['Discount']
         ga_df = pd.concat([idx_frame, ga_df], axis=1)
         ga_df = pd.merge(ga_df, self.zscore, on=["SKU"], how="left")
         ga_df["z_disc"] = (ga_df["Discount"] - ga_df["Mean"]) / ga_df["Std_deviation"]
@@ -77,12 +80,10 @@ class RevenueEstimation:
                 comp_matrix.loc[comp_matrix["SKU"] == sku, [sku + "_" + promo]] = 0
         comp_matrix.fillna(0, inplace=True)
 
-        # comp_matrix.head()
-
         revenue = []
 
         ## Iterate through each week through the demand function
-        ## Obtain sales prediction and feed back into historical sales for picking\
+        ## Obtain sales prediction and feed back into historical sales for picking
 
         for week in range(start, end):
 
