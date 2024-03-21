@@ -6,7 +6,7 @@ from pymoo.optimize import minimize
 from pymoo.algorithms.soo.nonconvex.ga import GA
 import numpy as np
 from pymoo.core.sampling import Sampling
-from utils import utils
+from my_utils import utils
 
 from pymoo.operators.crossover.pntx import (
     PointCrossover,
@@ -19,8 +19,8 @@ from pymoo.core.mutation import Mutation
 from pymoo.core.crossover import Crossover
 import streamlit as st
 import pandas as pd
-import pages.Data_upload
-from pages.Data_upload import Solution
+# import pages.Data_upload
+# from pages.Data_upload import Solution
 
 
 if 'result' in st.session_state:
