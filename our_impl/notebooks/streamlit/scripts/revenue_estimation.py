@@ -1,16 +1,31 @@
 import pandas as pd
 import numpy as np
 
+import warnings
+from pandas.errors import SettingWithCopyWarning
+
+warnings.simplefilter(action="ignore", category=(SettingWithCopyWarning))
+
+warnings.filterwarnings(
+    "ignore",
+    category=FutureWarning,
+    message="Downcasting object dtype arrays on .fillna, .ffill, .bfill is deprecated",
+)
+
+warnings.filterwarnings(
+    "ignore", category=RuntimeWarning, message="invalid value encountered in log"
+)
+
 
 class RevenueEstimation:
     def __init__(
         self,
-        sales_dir="../assets/processed_sales.csv", # process_data_sls.ipynb
-        cal_dir="../assets/calendar_week.csv",# process_data_sls.ipynb
-        events_dir="../assets/events.csv", # process_data_sls.ipynb
-        zscore_dir="../assets/Z_scores.csv", # demand func .ipynb
-        dd_coeff_dir="../assets/Coefficients.csv", # demand func .ipynb
-        prices_dir="../assets/prices.csv", # process_data_sls.ipynb
+        sales_dir="../assets/processed_sales.csv",  # process_data_sls.ipynb
+        cal_dir="../assets/calendar_week.csv",  # process_data_sls.ipynb
+        events_dir="../assets/events.csv",  # process_data_sls.ipynb
+        zscore_dir="../assets/Z_scores.csv",  # demand func .ipynb
+        dd_coeff_dir="../assets/Coefficients.csv",  # demand func .ipynb
+        prices_dir="../assets/prices.csv",  # process_data_sls.ipynb
         sales=None,
         cal_week=None,
         events=None,
@@ -18,7 +33,6 @@ class RevenueEstimation:
         dd_coeff=None,
         prices=None,
     ):
-
         self.sales = pd.read_csv(sales_dir) if sales is None else sales
         self.cal_week = pd.read_csv(cal_dir) if cal_week is None else cal_week
         self.events = pd.read_csv(events_dir) if events is None else events
@@ -54,7 +68,7 @@ class RevenueEstimation:
 
         ## Preapare GA dataframe
         ga_df = ga_output.copy()
-        ga_df['Discount'] = 1 + ga_df['Discount']
+        ga_df["Discount"] = 1 + ga_df["Discount"]
         ga_df = pd.concat([idx_frame, ga_df], axis=1)
         ga_df = pd.merge(ga_df, self.zscore, on=["SKU"], how="left")
         ga_df["z_disc"] = (ga_df["Discount"] - ga_df["Mean"]) / ga_df["Std_deviation"]
@@ -184,24 +198,25 @@ class RevenueEstimation:
         return sum(revenue)
 
 
-rev_est = RevenueEstimation()
+if __name__ == "__main__":
+    rev_est = RevenueEstimation()
 
-# sku_list = ['7_1_42365_22800', '88_6_99998_59504', '88_6_99998_59509','88_6_99998_59597', '7_1_42365_26400']
-# full 36
-sku_list = rev_est.zscore["SKU"].tolist()
-sku_list = sorted(sku_list)
-print(f"{sku_list=}")
-start = 1375
-period = 8
+    # sku_list = ['7_1_42365_22800', '88_6_99998_59504', '88_6_99998_59509','88_6_99998_59597', '7_1_42365_26400']
+    # full 36
+    sku_list = rev_est.zscore["SKU"].tolist()
+    sku_list = sorted(sku_list)
+    print(f"{sku_list=}")
+    start = 1375
+    period = 8
 
-ga_output = {
-    "Discount": np.random.choice(
-        np.arange(5, 55, 5) / 100, len(sku_list) * period
-    ),  # Random discounts
-    "Feature": np.random.choice([0, 1], len(sku_list) * period),  # Random features
-    "Display": np.random.choice([0, 1], len(sku_list) * period),  # Random displays
-}
-ga_output = pd.DataFrame(ga_output)
+    ga_output = {
+        "Discount": np.random.choice(
+            np.arange(5, 55, 5) / 100, len(sku_list) * period
+        ),  # Random discounts
+        "Feature": np.random.choice([0, 1], len(sku_list) * period),  # Random features
+        "Display": np.random.choice([0, 1], len(sku_list) * period),  # Random displays
+    }
+    ga_output = pd.DataFrame(ga_output)
 
-revenue = rev_est.fitness_demand(ga_output, sku_list, start, period)
-print(revenue)
+    revenue = rev_est.fitness_demand(ga_output, sku_list, start, period)
+    print(revenue)
