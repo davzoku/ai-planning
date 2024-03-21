@@ -7,72 +7,47 @@ from collections import OrderedDict
 #from helper_demand_functions import *
 from utils import utils
 
+def local_css(file_name):
+    with open(file_name) as f:
+        css = f.read()
+        
+    return css
+
+st.set_page_config(
+    page_title="Promotion optimizer",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+
 st.title('Promotion optimization for retail stores')
 #st.set_page_config(page_title = "AI Planning") 
+#st.sidebar.success("navigation bar")
 
-st.sidebar.success("navigation bar")
-st.image('cover_img.png')
 
-st.header('How to use this application')
+st.subheader('How to use this application')
 st.markdown("""
-    1. Upload Data
-    2. Run Demand Function to generate demand predictions
-    3. Run GA to calculate predicted costs and profits
+    1. Upload your store datasets
+    2. Optimize 
     """)
 
 utils.add_logo()
+# with open('./style.css') as f:
+#     css = f.read()
+#     #print(css)
+    
+st.subheader("Sample dataset format for store")
+sample_data = pd.read_csv('./combined_milk_final.csv')
+st.write(sample_data)
+csv = sample_data.to_csv(index=False)
 
-# CUSTOM_CSS = """
-# <style>
-# .custom-nav {
-#     display: flex;
-#     align-items: center;
-#     padding: 10px;
-#     background-color: #f0f2f6; /* Light grey background */
-# }
-# .custom-logo {
-#     height: 50px; /* Adjust based on your logo's size */
-#     margin-right: 20px;
-# }
-# .custom-title {
-#     font-size: 24px;
-#     font-weight: bold;
-#     color: #333; /* Dark grey text */
-# }
-# </style>
-# """
+st.download_button(
+    label="Download data as CSV",
+    data=csv,
+    file_name='sample_data.csv',
+    mime='text/csv',
+)
 
-# # Path or URL to your logo
-# logo_path = "path/to/your/logo.png"  # Update this to your logo's path or URL
+css = local_css("./style.css")
+st.markdown(f'<style>{css}</style>', unsafe_allow_html=True)
 
-# # Inject custom HTML with your logo at the top of the app
-# # st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
-# # st.markdown(f"""
-# # <div class="custom-nav">
-# #     <img src="{logo_path}" class="custom-logo">
-# #     <div class="custom-title">OptiPromo</div>
-# # </div>
-# # """, unsafe_allow_html=True)
-
-# st.markdown(
-#     """
-#     <style>
-#         [data-testid="stSidebarNav"] {
-#             background-image: "/logo.png";
-#             background-repeat: no-repeat;
-#             padding-top: 120px;
-#             background-position: 20px 20px;
-#         }
-#         [data-testid="stSidebarNav"]::before {
-#             content: "OptiPromo";
-#             margin-left: 20px;
-#             margin-top: 20px;
-#             font-size: 30px;
-#             position: relative;
-#             top: 100px;
-#             padding:20px;
-#         }
-#     </style>
-#     """,
-#     unsafe_allow_html=True,
-# )
