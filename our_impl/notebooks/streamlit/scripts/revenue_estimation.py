@@ -58,6 +58,7 @@ class RevenueEstimation:
         ga_df = pd.concat([idx_frame, ga_df], axis=1)
         ga_df = pd.merge(ga_df, self.zscore, on=["SKU"], how="left")
         ga_df["z_disc"] = (ga_df["Discount"] - ga_df["Mean"]) / ga_df["Std_deviation"]
+        ga_df["z_disc"] = ga_df["z_disc"] * -1
         ga_df = ga_df[["SKU", "Time_ID", "z_disc", "Feature", "Display"]]
         ga_df = ga_df.rename(columns={"z_disc": "Discount"})
 
@@ -73,8 +74,8 @@ class RevenueEstimation:
         comp_matrix = pd.concat([idx_frame, comp_matrix], axis=1)
         for sku in sku_list:
             for promo in ["Discount", "Display", "Feature"]:
-                neg = -1 if promo in ["Display", "Feature"] else 1
-                tmp = list(ga_df[ga_df["SKU"] == sku][promo] * neg) * period
+                # neg = -1 if promo in ["Display", "Feature"] else 1
+                tmp = list(ga_df[ga_df["SKU"] == sku][promo] * -1) * period
                 tmp = pd.DataFrame(tmp)
                 comp_matrix[sku + "_" + promo] = tmp
                 comp_matrix.loc[comp_matrix["SKU"] == sku, [sku + "_" + promo]] = 0
