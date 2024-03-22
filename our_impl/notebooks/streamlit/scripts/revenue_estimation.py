@@ -163,7 +163,7 @@ class RevenueEstimation:
             sales_output = np.diag(ga_val.dot(dd_coeff_val))
 
             ### ADD MODEL BIAS
-            bias_tmp = dd_bias[dd_bias['SKU'].isin(sku_list)]['bias'].values
+            bias_tmp = self.dd_bias[self.dd_bias['SKU'].isin(sku_list)]['bias'].values
             sales_output = sales_output + bias_tmp
 
             prices_tmp = self.prices[
