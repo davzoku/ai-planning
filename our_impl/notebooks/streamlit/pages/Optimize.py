@@ -22,6 +22,17 @@ import pandas as pd
 import sys
 import os
 
+
+def local_css(file_name):
+    with open(file_name) as f:
+        css = f.read()
+        
+    return css
+
+
+css = local_css("./style.css")
+st.markdown(f'<style>{css}</style>', unsafe_allow_html=True)
+
 if 'coeff' in st.session_state:
     st.success("Coefficient data loaded!")
     coeff = pd.DataFrame(st.session_state['coeff'])
@@ -363,8 +374,15 @@ if submit_button:
     rows = CFG["sku_num"] * CFG["h"]
     cols = CFG["price_opt_num"] + CFG["ndf"]
     formatted_schedule = problem._to_discount_values(res.X.reshape((rows, cols)))
+    start = start_week
+    end = start_week + period
 
-    st.dataframe(formatted_schedule)
+    idx_frame = [(SKU, Time_ID) for Time_ID in range(start, end) for SKU in sku_list]
+    idx_frame = pd.DataFrame(idx_frame, columns=["SKU", "Time_ID"])
+
+    output_df = pd.concat([idx_frame, formatted_schedule], axis=1)
+    
+    st.dataframe(output_df)
 
     revenue = -res.F[0]  # reverse the sign back to pos
     formatted_revenue = f"{revenue:.2f}"

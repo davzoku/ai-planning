@@ -10,6 +10,17 @@ from stqdm import stqdm
 from my_utils import utils
 
 utils.add_logo()
+
+
+def local_css(file_name):
+    with open(file_name) as f:
+        css = f.read()
+        
+    return css
+
+css = local_css("./style.css")
+st.markdown(f'<style>{css}</style>', unsafe_allow_html=True)
+
 # class Upload:
 #     @staticmethod
 #     def upload_store_data():
