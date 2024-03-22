@@ -262,7 +262,7 @@ class Solution:
 
         # Create an empty DataFrame with the specified list of row indexes
         final_df = pd.DataFrame(index=complete_index)
-        st.write(final_df)
+        #st.write(final_df)
 
         df_z_score = pd.DataFrame(columns=["Mean", "Std_deviation", 'bias'])
 

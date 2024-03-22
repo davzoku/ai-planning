@@ -44,11 +44,11 @@ if "z_score" in st.session_state:
     st.success("Z-Score data loaded!")
     z_score = pd.DataFrame(st.session_state["z_score"])
     print(f"before {z_score=}")
-    st.write(f"{z_score}")
+    #st.write(f"{z_score}")
     z_score = z_score.reset_index()
     z_score.rename(columns={z_score.columns[0]: "SKU"}, inplace=True)
     print(f"after {z_score=}")
-    st.write(f"{z_score}")
+    #st.write(f"{z_score}")
     st.write("zscore loaded", z_score)
 else:
     # st.warning("Please upload dataset")
@@ -229,7 +229,7 @@ with st.form(key="all_inputs_form"):
 
 if submit_button:
     time_id = cal_week[cal_week["Start_Date"] == start_week]["Time_ID"].iloc[0]
-    st.write("time ID", time_id)
+    #st.write("time ID", time_id)
     start_week = time_id
     period = week_horizon
     # zscore = pd.read_csv("assets/Z_scores.csv")
