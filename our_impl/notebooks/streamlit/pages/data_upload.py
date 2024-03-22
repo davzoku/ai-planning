@@ -8,6 +8,7 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, mean_absolu
 from tqdm import tqdm
 from stqdm import stqdm
 from my_utils import utils
+from sklearn.linear_model import Lasso
 
 utils.add_logo()
 
@@ -88,8 +89,9 @@ def price_discount(df, sku = None, year_col='Year'):
 def sales_lag(df, sku = None, neg = True):
     out_df = df.copy()
     sales_col = f'{sku}_Sales' if sku is not None else 'Sales'
-    out_df[sales_col] = -np.log(out_df[sales_col].shift(1)) if neg is True else np.log(out_df[sales_col].shift(1))
+    out_df[sales_col] = out_df[sales_col].shift(1) if neg is True else out_df[sales_col].shift(1)
     return out_df
+
 
 def sum_columns(df, sku = None, promotype = 'Feature', neg = True):
     out_df = df.copy()
@@ -101,7 +103,7 @@ def sum_columns(df, sku = None, promotype = 'Feature', neg = True):
     sum_values = np.sum(out_df[columns_to_max].values, axis=1)
     # Create a new column with the maximum values
     max_column_name = f'{sku}_{promotype}' if neg is True else f'{promotype}'
-    out_df[max_column_name] = -sum_values if neg is True else sum_values
+    out_df[max_column_name] = sum_values if neg is True else sum_values
     # Drop the columns used in the max calculation
     out_df.drop(columns=columns_to_max, inplace=True)
     return out_df
@@ -130,9 +132,9 @@ def demand_coef(data, calendar, store_id_input, sku_id, window_size, train_year_
     store_compet_final = store_compet_sku_df.copy()
     for sku in compet_sku:
         store_compet_final, _, _ = price_discount(store_compet_final, sku)
-        store_compet_final = sum_columns(store_compet_final, sku, 'Feature')    # Negative Features
-        store_compet_final = sum_columns(store_compet_final, sku, 'Display')    # Negative Display
-        store_compet_final = sales_lag(store_compet_final, sku)                 # Negative Lag Sales 
+        store_compet_final = sum_columns(store_compet_final, sku, 'Feature')    # Features
+        store_compet_final = sum_columns(store_compet_final, sku, 'Display')    # Display
+        store_compet_final = sales_lag(store_compet_final, sku)                 # Lag Sales 
 
     drop_cols = ['Store_ID', 'median_price']
     store_compet_final.drop(columns = drop_cols, inplace = True)
@@ -141,17 +143,17 @@ def demand_coef(data, calendar, store_id_input, sku_id, window_size, train_year_
 
     # SKU Features
     store_sku_df_part = store_sku_df.copy()
-    store_sku_df_part, dis_mean, dis_std = price_discount(store_sku_df_part)                                                        # Price Column
-    store_sku_df_part = sum_columns(store_sku_df_part, promotype = 'Feature', neg = False)                                          # Feature Column
-    store_sku_df_part = sum_columns(store_sku_df_part, promotype = 'Display', neg = False)                                          # Display Column
+    store_sku_df_part, dis_mean, dis_std = price_discount(store_sku_df_part)                                                  # Price Column
+    store_sku_df_part = sum_columns(store_sku_df_part, promotype = 'Feature', neg = False)                                    # Feature Column
+    store_sku_df_part = sum_columns(store_sku_df_part, promotype = 'Display', neg = False)                                    # Display Column
 
-    store_sku_df_part['Pricelag'] = -store_sku_df_part['Price'].shift(1)                                                      # Negative Price Lag Column
-    store_sku_df_part['Featurelag'] = -store_sku_df_part['Feature'].shift(1)                                                        # Negative Feature Lag Column
-    store_sku_df_part['Displaylag'] = -store_sku_df_part['Display'].shift(1)                                                        # Negative Display Lag Column
+    store_sku_df_part['Pricelag'] = store_sku_df_part['Price'].shift(1)                                                      # Price Lag Column
+    store_sku_df_part['Featurelag'] = store_sku_df_part['Feature'].shift(1)                                                  #  Feature Lag Column
+    store_sku_df_part['Displaylag'] = store_sku_df_part['Display'].shift(1)                                                  #  Display Lag Column
 
-    store_sku_df_part['Saleslag'] = -np.log(store_sku_df_part['Sales'].shift(1))                                                    # Negative Log Sales Lag Column 
-    store_sku_df_part['Sales_mov_avg'] = np.log(store_sku_df_part['Sales'].rolling(window = window_size).mean()).shift(1)           # Log Sales Rolling Mean Lag Column
-    store_sku_df_part['Sales'] = np.log(store_sku_df_part['Sales'])                                                                 # Process Sales for Target Variable
+    store_sku_df_part['Saleslag'] = store_sku_df_part['Sales'].shift(1)                                                     # Log Sales Lag Column 
+    store_sku_df_part['Sales_mov_avg'] = store_sku_df_part['Sales'].rolling(window = window_size).mean().shift(1)           # Log Sales Rolling Mean Lag Column
+    store_sku_df_part['Sales'] = store_sku_df_part['Sales']                                                                 # Process Sales for Target Variable
 
 
     # Add Special Events
@@ -167,8 +169,8 @@ def demand_coef(data, calendar, store_id_input, sku_id, window_size, train_year_
     drop_cols = ['Discount','Store_ID', 'median_price', 'SKU', 'IRI Week']
     store_sku_df_part.drop(columns = drop_cols, inplace = True)
 
-    model_1 = LassoCV(cv = 3, alphas= alphas, max_iter = 1000)
-    model_2 = LassoCV(cv = 3, alphas= alphas, max_iter = 1000)
+    model_1 = Lasso(max_iter = 10000)
+    model_2 = Lasso(max_iter = 10000)
 
     store_sku_part_trg = store_sku_df_part[(store_sku_df_part["Year"] >= train_year_from) & (store_sku_df_part["Year"] <= train_year_to)]
     store_sku_part_trg = store_sku_part_trg.iloc[window_size:]
@@ -190,23 +192,23 @@ def demand_coef(data, calendar, store_id_input, sku_id, window_size, train_year_
     store_compet_trg = store_compet_trg.drop(columns = compet_train_drop)
     # store_compet_test = store_compet_test.drop(columns = compet_train_drop)
 
-    positive_features_1 = ['Price', 'Feature', 'Display', 'Pricelag' ,'Featurelag', 'Displaylag', 'Saleslag']
-    #model_1.positive = positive_features_1 
-    model_1.positive = True
+    # positive_features_1 = ['Price', 'Feature', 'Display', 'Pricelag' ,'Featurelag', 'Displaylag', 'Saleslag']
+    # model_1.positive = positive_features_1 
     model_1.fit(store_sku_part_trg, sku_sales_train)
     sku_sales_train_rsd = sku_sales_train - model_1.predict(store_sku_part_trg)
 
-    positive_features_2 = [col for col in store_compet_trg.columns if col.endswith(("_Display", "_Feature", "_Price"))]
-    #model_2.positive = positive_features_2
-    model_2.positive = True
+    # positive_features_2 = [col for col in store_compet_trg.columns if col.endswith(("_Display", "_Feature", "_Price"))]
+    # model_2.positive = positive_features_2
     model_2.fit(store_compet_trg, sku_sales_train_rsd)
 
     model_1_df = pd.DataFrame(model_1.coef_, index = store_sku_part_trg.columns, columns=[sku_id] )
     model_2_df = pd.DataFrame(model_2.coef_, index = store_compet_trg.columns, columns=[sku_id] )
 
+    bias_term = model_1.intercept_ + model_2.intercept_
+
     coef_df = pd.concat([model_1_df, model_2_df])
 
-    return coef_df, dis_mean, dis_std
+    return coef_df, dis_mean, dis_std, bias_term
 
 #data = pd.read_csv(file_dir)
 #calendar = pd.read_csv(time_dir)
@@ -238,7 +240,7 @@ class Solution:
         if time_data:
             calendar = pd.read_csv(time_data)
         
-            
+        
         base_features = ['Price', 'Feature', 'Display', 'Pricelag', 'Featurelag', 'Displaylag', 
                  'Saleslag', 'Sales_mov_avg', 'Halloween', 'Halloween_1', 'Thanksgiving',
                  'Thanksgiving_1', 'Christmas', 'Christmas_1', 'NewYear', 'President',
@@ -262,12 +264,12 @@ class Solution:
         final_df = pd.DataFrame(index=complete_index)
         st.write(final_df)
 
-        df_z_score = pd.DataFrame(columns=["Mean", "Std_deviation"])
+        df_z_score = pd.DataFrame(columns=["Mean", "Std_deviation", 'bias'])
 
         for sku in stqdm(unique_skus):
-            df_coef, mean, std = demand_coef(data, calendar, self.store_id_input, sku, self.window_size, self.year_from, self.year_to, self.alphas)
+            df_coef, mean, std, bias = demand_coef(data, calendar, self.store_id_input, sku, self.window_size, self.year_from, self.year_to, self.alphas)
             final_df = final_df.join(df_coef, how = 'left').fillna(0)
-            df_z_score.loc[sku] = [mean, std]
+            df_z_score.loc[sku] = [mean, std, bias]
 
         final_df.index = [idx.replace('Price', 'Discount') for idx in final_df.index]
         
