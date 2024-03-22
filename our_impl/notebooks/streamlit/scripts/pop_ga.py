@@ -364,9 +364,12 @@ class PromotionOptimizationProblem(ElementwiseProblem):
         # use this to get the simplified 3 columns
         # discount, price, display
         converted_sol = self._to_discount_values(can_sol)
+        cost = converted_sol[['Display', 'Feature']].sum().sum() * 20
         profit = self.rev_est.fitness_demand(
             converted_sol, self.selected_sku_list, self.start_week, self.period
         )
+        # cost = converted_sol.iloc[:, 1:3].sum() * 20
+        profit -= cost
         # print(f"{profit=}")
 
         # # TODO: For loop to cater to demand function calculation,  also to include display and feature effect on profit
