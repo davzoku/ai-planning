@@ -29,14 +29,28 @@ class RevenueEstimation:
         sales=None,
         cal_week=None,
         events=None,
+        zscore_tmp=None, ### UPDATED
         zscore=None,
         dd_coeff=None,
+        dd_bias=None, ### UPDATED
         prices=None,
     ):
         self.sales = pd.read_csv(sales_dir) if sales is None else sales
         self.cal_week = pd.read_csv(cal_dir) if cal_week is None else cal_week
         self.events = pd.read_csv(events_dir) if events is None else events
-        self.zscore = pd.read_csv(zscore_dir) if zscore is None else zscore
+        ### START UPDATED
+        self.zscore_tmp = pd.read_csv(zscore_dir) if zscore_tmp is None else zscore_tmp
+        self.zscore_tmp = self.zscore_tmp.rename(columns={'Unnamed: 0': 'SKU'})
+        self.zscore_tmp = self.zscore_tmp.sort_values(by='SKU')
+        self.zscore = (
+            self.zscore_tmp[['SKU', 'Mean', 'Std_deviation']] 
+            if zscore is None 
+            else zscore
+        )
+        self.dd_bias = self.zscore_tmp[['SKU', 'bias']] if dd_bias is None else dd_bias
+        ### END UPDATED
+
+
         self.dd_coeff = (
             pd.read_csv(dd_coeff_dir).drop(columns="Unnamed: 0")
             if dd_coeff is None
@@ -88,8 +102,8 @@ class RevenueEstimation:
         comp_matrix = pd.concat([idx_frame, comp_matrix], axis=1)
         for sku in sku_list:
             for promo in ["Discount", "Display", "Feature"]:
-                # neg = -1 if promo in ["Display", "Feature"] else 1
-                tmp = list(ga_df[ga_df["SKU"] == sku][promo] * -1) * period
+                ### UPDATED REMOVE NEG
+                tmp = list(ga_df[ga_df["SKU"] == sku][promo]) * period
                 tmp = pd.DataFrame(tmp)
                 comp_matrix[sku + "_" + promo] = tmp
                 comp_matrix.loc[comp_matrix["SKU"] == sku, [sku + "_" + promo]] = 0
@@ -112,11 +126,13 @@ class RevenueEstimation:
                 merge = merge.rename(columns={promo: promo + "lag"})
                 ga_tmp = pd.merge(ga_tmp, merge, on=["SKU"], how="left")
 
+
+            ### CHANGE Log_sls to Sales
             merge = sales_hist[sales_hist["Time_ID"] == week - 1][
-                ["SKU", "Log_sls", "Lag8w_avg_sls"]
+                ["SKU", "Sales", "Lag8w_avg_sls"]
             ].copy()
             merge = merge.rename(
-                columns={"Log_sls": "Saleslag", "Lag8w_avg_sls": "Sales_mov_avg"}
+                columns={"Sales": "Saleslag", "Lag8w_avg_sls": "Sales_mov_avg"}
             )
             ga_tmp = pd.merge(ga_tmp, merge, on=["SKU"], how="left")
 
@@ -145,6 +161,11 @@ class RevenueEstimation:
             ga_val = ga_tmp.drop(columns=["SKU", "Time_ID"]).values
 
             sales_output = np.diag(ga_val.dot(dd_coeff_val))
+
+            ### ADD MODEL BIAS
+            bias_tmp = dd_bias[dd_bias['SKU'].isin(sku_list)]['bias'].values
+            sales_output = sales_output + bias_tmp
+
             prices_tmp = self.prices[
                 (self.prices["SKU"].isin(sku_list)) & (self.prices["Year"] == year)
             ]["med_price"].values
