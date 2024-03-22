@@ -1,0 +1,55 @@
+/* style.css */
+
+/* Gradient background for the entire page */
+.stApp > header {
+    background-color: transparent;
+}
+
+.stApp {
+    margin: auto;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    overflow: auto;
+    background: linear-gradient(315deg, #513483 3%, #2e638f 38%, #107a78 68%, #771299 98%);
+    animation: gradient 15s ease infinite;
+    background-size: 400% 400%;
+    background-attachment: fixed;
+}
+
+
+/* 
+
+.stApp h1 {
+    color: #000000 !important;
+}
+
+
+.stApp h2 {
+    color: #000000 !important; 
+}
+
+
+.stApp p {
+    color: #000000 !important;
+} */
+
+
+/* Gradient animation keyframes */
+@keyframes gradient {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+
+
+[data-testid="stSidebar"] [class] {
+    background-color: #000000 !important; /* Make sidebar background black */
+    color: #FFFFFF !important; /* Optional: change sidebar text color to white */
+}
+/* Customize other elements as needed... */
