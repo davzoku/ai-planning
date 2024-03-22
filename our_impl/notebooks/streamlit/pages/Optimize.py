@@ -4,7 +4,12 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from pymoo.optimize import minimize
 from pymoo.algorithms.soo.nonconvex.ga import GA
+from pymoo.operators.crossover.pntx import (
+    SinglePointCrossover,
+    TwoPointCrossover,
+)
 from pymoo.operators.crossover.sbx import SBX
+from pymoo.operators.mutation.pm import PolynomialMutation
 
 from utils import utils
 
@@ -108,11 +113,14 @@ if submit_button:
         algo_best_ops = GA(
             pop_size=POP_SIZE,
             sampling=pop_ga.SKUPopulationSampling(cfg=problem.cfg, pop_size=POP_SIZE),
-            mutation=pop_ga.SwapMutation(cfg=problem.cfg, prob=0.4),
-            crossover=SBX(prob=0.2, eta=15),
+            # mutation=pop_ga.SwapMutation(cfg=problem.cfg, prob=0.4),
+            # crossover=SBX(prob=0.2, eta=15),
+            mutation=PolynomialMutation(prob=0.6, eta=20),
+            crossover=TwoPointCrossover(prob=0.4),
             eliminate_duplicates=True,
         )
-        label = "SBX 0.2 Swap Mutation 0.4"
+        # label = "SBX 0.2 Swap Mutation 0.4"
+        label = "TwoPointCrossover 0.4, PM 0.6"
 
         start_time = time.time()
         res = minimize(
@@ -133,7 +141,8 @@ if submit_button:
 
         st.dataframe(formatted_schedule)
 
-        formatted_revenue = f"{res.F[0]:.2f}"
+        revenue = -res.F[0]  # reverse the sign back to pos
+        formatted_revenue = f"{revenue:.2f}"
         formatted_time = f"{time:.2f}"
 
         markdown_text = f"""
