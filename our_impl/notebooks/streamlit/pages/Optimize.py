@@ -46,44 +46,9 @@ from scripts import revenue_estimation
 from scripts import pop_ga
 
 utils.add_logo()
-
-with st.form(key="all_inputs_form"):
-    c1, c2 = st.columns(2)
-    with c1:
-        sku_num = st.number_input("Number of SKUs", value=0)
-    with c2:
-        week_horizon = st.number_input("Week Horizon", value=0)
-
-    st.write("---")
-
-    c3, c4, c5 = st.columns(3)
-    # with c5:
-    #     ndf = st.number_input("Number of display features", value=0, key="ndf")
-    with c3:
-        lim_pro_per_cate_xu = st.number_input(
-            "Max Number of Promotion Items per Week", value=0, key="lim_pro_per_cate_xu"
-        )
-    with c4:
-        lim_dis_per_cate_xu = st.number_input(
-            "Max Number of Display Items per Week", value=0, key="lim_dis_per_cate_xu"
-        )
-    with c5:
-        lim_fea_per_cate_xu = st.number_input(
-            "Max Number of Feature Items per Week", value=0, key="lim_fea_per_cate_xu"
-        )
-
-    st.write("---")
-
-    c6, c7 = st.columns(2)
-
-    with c6:
-        pop_size = st.number_input("GA Population Size", value=10, key="pop_size")
-    with c7:
-        gen_size = st.number_input(
-            "GA Number of Generations", value=100, key="gen_size"
-        )
-
-    submit_button = st.form_submit_button(label="Submit")
+sku_list = z_score["SKU"].tolist()
+options = ["All"] + sku_list
+num_of_sku = len(sku_list)
 
 def process_data():
     file_dir = 'assets/combined_milk_final.csv'
@@ -143,135 +108,181 @@ def process_data():
     return sales, med_prices, cal_week, events
 
 
-def ga_demand():
-    sales, med_prices, cal_week, events = process_data()
-    sales = sales
-    cal_week = cal_week
-    events = events
-    dd_coeff = coeff
-    prices = med_prices
-    all_skus = sorted(sales['SKU'].unique())
+# def ga_demand():
+#     sales, med_prices, cal_week, events = process_data()
+#     sales = sales
+#     cal_week = cal_week
+#     events = events
+#     dd_coeff = coeff
+#     prices = med_prices
+#     all_skus = sorted(sales['SKU'].unique())
 
-    time_year = sales[['Time_ID', 'Year']].copy()
-    time_year = time_year.drop_duplicates()
+#     time_year = sales[['Time_ID', 'Year']].copy()
+#     time_year = time_year.drop_duplicates()
 
-    ## To comment out later parameters come from GA function
-    sku_list = ['7_1_42365_22800', '88_6_99998_59504', '88_6_99998_59509','88_6_99998_59597', '7_1_42365_26400']
-    sku_list = sorted(sku_list)
-    start = 1375
-    period = 8
+#     ## To comment out later parameters come from GA function
+#     sku_list = ['7_1_42365_22800', '88_6_99998_59504', '88_6_99998_59509','88_6_99998_59597', '7_1_42365_26400']
+#     sku_list = sorted(sku_list)
+#     start = 1375
+#     period = 8
 
-    ## To comment later ga_output comes from GA function
-    ga_output = {
-        'Discount': np.random.choice(np.arange(5, 55, 5)/100, len(sku_list)*period) ,  # Random discounts
-        'Feature': np.random.choice([0, 1], len(sku_list)*period),  # Random features
-        'Display': np.random.choice([0, 1], len(sku_list)*period) # Random displays
-    }
-    ga_output = pd.DataFrame(ga_output)
+#     ## To comment later ga_output comes from GA function
+#     ga_output = {
+#         'Discount': np.random.choice(np.arange(5, 55, 5)/100, len(sku_list)*period) ,  # Random discounts
+#         'Feature': np.random.choice([0, 1], len(sku_list)*period),  # Random features
+#         'Display': np.random.choice([0, 1], len(sku_list)*period) # Random displays
+#     }
+#     ga_output = pd.DataFrame(ga_output)
     
-    #combined the ga_demand function
-    histr = start - 1
-    end =  start + period
+#     #combined the ga_demand function
+#     histr = start - 1
+#     end =  start + period
 
-    idx_frame = [(SKU, Time_ID) for SKU in sku_list for Time_ID in range(start, end)]
-    idx_frame = pd.DataFrame(idx_frame, columns=['SKU', 'Time_ID'])
+#     idx_frame = [(SKU, Time_ID) for SKU in sku_list for Time_ID in range(start, end)]
+#     idx_frame = pd.DataFrame(idx_frame, columns=['SKU', 'Time_ID'])
 
-    sales_hist = sales[(sales['SKU'].isin(sku_list)) & (sales['Time_ID']>=histr-period-5) & (sales['Time_ID']<=histr)].copy()
+#     sales_hist = sales[(sales['SKU'].isin(sku_list)) & (sales['Time_ID']>=histr-period-5) & (sales['Time_ID']<=histr)].copy()
 
-    ## Preapare GA dataframe
-    ga_df = ga_output.copy()
-    ga_df = pd.concat([idx_frame, ga_df], axis=1)
-    ga_df = pd.merge(ga_df, z_score, on=['SKU'], how='left')
-    ga_df['z_disc'] = (ga_df['Discount'] - ga_df['Mean']) / ga_df['Std_deviation']
-    ga_df = ga_df[['SKU', 'Time_ID', 'z_disc', 'Feature', 'Display']]
-    ga_df = ga_df.rename(columns={'z_disc': 'Discount'})
+#     ## Preapare GA dataframe
+#     ga_df = ga_output.copy()
+#     ga_df = pd.concat([idx_frame, ga_df], axis=1)
+#     ga_df = pd.merge(ga_df, z_score, on=['SKU'], how='left')
+#     ga_df['z_disc'] = (ga_df['Discount'] - ga_df['Mean']) / ga_df['Std_deviation']
+#     ga_df = ga_df[['SKU', 'Time_ID', 'z_disc', 'Feature', 'Display']]
+#     ga_df = ga_df.rename(columns={'z_disc': 'Discount'})
 
-    ## Create Competitor Matrix
-    comp_matrix_columns = [f'{sku}_{promo}' for sku in all_skus for promo in ['Discount', 'Display', 'Feature', 'Sales']]
-    comp_matrix = pd.DataFrame(columns=comp_matrix_columns, index=range(len(sku_list)*period))
-    comp_matrix = pd.concat([idx_frame, comp_matrix], axis=1)
-    for sku in sku_list:
-        for promo in ['Discount', 'Display', 'Feature']:
-            neg = -1 if promo in ['Display', 'Feature'] else 1
-            tmp = list(ga_df[ga_df['SKU']==sku][promo] * neg) * period
-            tmp = pd.DataFrame(tmp)
-            comp_matrix[sku + "_" + promo] = tmp
-            comp_matrix.loc[comp_matrix['SKU'] == sku, [sku + "_" + promo]] = 0
-    comp_matrix.fillna(0, inplace=True)
+#     ## Create Competitor Matrix
+#     comp_matrix_columns = [f'{sku}_{promo}' for sku in all_skus for promo in ['Discount', 'Display', 'Feature', 'Sales']]
+#     comp_matrix = pd.DataFrame(columns=comp_matrix_columns, index=range(len(sku_list)*period))
+#     comp_matrix = pd.concat([idx_frame, comp_matrix], axis=1)
+#     for sku in sku_list:
+#         for promo in ['Discount', 'Display', 'Feature']:
+#             neg = -1 if promo in ['Display', 'Feature'] else 1
+#             tmp = list(ga_df[ga_df['SKU']==sku][promo] * neg) * period
+#             tmp = pd.DataFrame(tmp)
+#             comp_matrix[sku + "_" + promo] = tmp
+#             comp_matrix.loc[comp_matrix['SKU'] == sku, [sku + "_" + promo]] = 0
+#     comp_matrix.fillna(0, inplace=True)
 
-    # comp_matrix.head()
+#     # comp_matrix.head()
 
-    revenue = []
+#     revenue = []
 
-    ## Iterate through each week through the demand function
-    ## Obtain sales prediction and feed back into historical sales for picking\
+#     ## Iterate through each week through the demand function
+#     ## Obtain sales prediction and feed back into historical sales for picking\
 
-    for week in range(start, end):
+#     for week in range(start, end):
 
-        dd_coeff_val = dd_coeff[sku_list].values
-        year = time_year[time_year['Time_ID']==week]['Year'].values[0]
-        ga_tmp = ga_df[ga_df['Time_ID']==week].copy()
-        for promo in ['Discount', 'Feature', 'Display']:
-            merge = sales_hist[sales_hist['Time_ID']==week-1][['SKU', promo]].copy()
-            merge = merge.rename(columns={promo: promo+"lag"})
-            ga_tmp = pd.merge(ga_tmp, merge, on=['SKU'], how='left')
+#         dd_coeff_val = dd_coeff[sku_list].values
+#         year = time_year[time_year['Time_ID']==week]['Year'].values[0]
+#         ga_tmp = ga_df[ga_df['Time_ID']==week].copy()
+#         for promo in ['Discount', 'Feature', 'Display']:
+#             merge = sales_hist[sales_hist['Time_ID']==week-1][['SKU', promo]].copy()
+#             merge = merge.rename(columns={promo: promo+"lag"})
+#             ga_tmp = pd.merge(ga_tmp, merge, on=['SKU'], how='left')
 
-        merge = sales_hist[sales_hist['Time_ID']==week-1][['SKU', 'Log_sls', 'Lag8w_avg_sls']].copy()
-        merge = merge.rename(columns={'Log_sls': 'Saleslag', 'Lag8w_avg_sls': 'Sales_mov_avg'})
-        ga_tmp = pd.merge(ga_tmp, merge, on=['SKU'], how='left')
+#         merge = sales_hist[sales_hist['Time_ID']==week-1][['SKU', 'Log_sls', 'Lag8w_avg_sls']].copy()
+#         merge = merge.rename(columns={'Log_sls': 'Saleslag', 'Lag8w_avg_sls': 'Sales_mov_avg'})
+#         ga_tmp = pd.merge(ga_tmp, merge, on=['SKU'], how='left')
 
-        events_tmp = events[events['Time_ID']==week].drop(columns = 'Time_ID').copy()
-        events_tmp = pd.concat([events_tmp]*len(sku_list), ignore_index=True)
-        ga_tmp = pd.concat([ga_tmp, events_tmp], axis=1)
+#         events_tmp = events[events['Time_ID']==week].drop(columns = 'Time_ID').copy()
+#         events_tmp = pd.concat([events_tmp]*len(sku_list), ignore_index=True)
+#         ga_tmp = pd.concat([ga_tmp, events_tmp], axis=1)
 
-        comp_tmp = comp_matrix[comp_matrix['Time_ID']==week].drop(columns = 'Time_ID').copy()
-        for sku in sku_list:
-            tmp = sales_hist[(sales_hist['SKU']==sku) & (sales_hist['Time_ID']==week-1)]['Sales'].item()
-            comp_tmp[sku+"_Sales"] = tmp
-            comp_tmp.loc[comp_tmp['SKU'] == sku, [sku + "_Sales"]] = 0
+#         comp_tmp = comp_matrix[comp_matrix['Time_ID']==week].drop(columns = 'Time_ID').copy()
+#         for sku in sku_list:
+#             tmp = sales_hist[(sales_hist['SKU']==sku) & (sales_hist['Time_ID']==week-1)]['Sales'].item()
+#             comp_tmp[sku+"_Sales"] = tmp
+#             comp_tmp.loc[comp_tmp['SKU'] == sku, [sku + "_Sales"]] = 0
 
-        ga_tmp = pd.merge(ga_tmp, comp_tmp, on=['SKU'], how='left')
+#         ga_tmp = pd.merge(ga_tmp, comp_tmp, on=['SKU'], how='left')
 
-        ga_val = ga_tmp.drop(columns=['SKU', 'Time_ID']).values
+#         ga_val = ga_tmp.drop(columns=['SKU', 'Time_ID']).values
 
-        sales_output = np.diag(ga_val.dot(dd_coeff_val))
-        prices_tmp = prices[(prices['SKU'].isin(sku_list)) & (prices['Year']==year)]['med_price'].values
+#         sales_output = np.diag(ga_val.dot(dd_coeff_val))
+#         prices_tmp = prices[(prices['SKU'].isin(sku_list)) & (prices['Year']==year)]['med_price'].values
 
-        revenue.append(sum(sales_output * prices_tmp))
+#         revenue.append(sum(sales_output * prices_tmp))
 
-        ## Prep for historical insert
-        prep_tmp = sales_hist[sales_hist['Time_ID']==week-1][['SKU', 'Lag7w_sum_sls']].copy()
-        hist_prep = sales_hist[sales_hist['Time_ID']==week-7][['SKU', 'Sales']]
-        hist_prep = hist_prep.rename(columns={'Sales': 'Lag7w_sls'})
-        hist_prep = pd.merge(hist_prep, prep_tmp, on=['SKU'], how='left')
-        hist_prep = hist_prep.drop(columns=['SKU'])
+#         ## Prep for historical insert
+#         prep_tmp = sales_hist[sales_hist['Time_ID']==week-1][['SKU', 'Lag7w_sum_sls']].copy()
+#         hist_prep = sales_hist[sales_hist['Time_ID']==week-7][['SKU', 'Sales']]
+#         hist_prep = hist_prep.rename(columns={'Sales': 'Lag7w_sls'})
+#         hist_prep = pd.merge(hist_prep, prep_tmp, on=['SKU'], how='left')
+#         hist_prep = hist_prep.drop(columns=['SKU'])
 
-        ## Build historical insert
-        hist_insert = ga_tmp[['SKU', 'Time_ID', 'Discount', 'Display', 'Feature']]
-        hist_insert['Year'] = year
-        hist_insert['Sales'] = sales_output
-        hist_insert['Log_sls'] =  -np.log(hist_insert['Sales'])
-        hist_insert = pd.concat([hist_insert, hist_prep], axis=1)
-        hist_insert['Lag8w_avg_sls'] = ( hist_insert['Lag7w_sum_sls'] + hist_insert['Sales'] ) / 8
-        hist_insert['Lag7w_sum_sls_upd'] = hist_insert['Lag7w_sum_sls'] - hist_insert['Lag7w_sls'] + hist_insert['Sales']
-        hist_insert = hist_insert[['SKU', 'Time_ID', 'Year', 'Sales', 'Discount', 'Display', 'Feature', 'Log_sls', 'Lag8w_avg_sls', 'Lag7w_sum_sls_upd']]
-        hist_insert = hist_insert.rename(columns={'Lag7w_sum_sls_upd': 'Lag7w_sum_sls'})
-        hist_insert.fillna(0, inplace=True)
+#         ## Build historical insert
+#         hist_insert = ga_tmp[['SKU', 'Time_ID', 'Discount', 'Display', 'Feature']]
+#         hist_insert['Year'] = year
+#         hist_insert['Sales'] = sales_output
+#         hist_insert['Log_sls'] =  -np.log(hist_insert['Sales'])
+#         hist_insert = pd.concat([hist_insert, hist_prep], axis=1)
+#         hist_insert['Lag8w_avg_sls'] = ( hist_insert['Lag7w_sum_sls'] + hist_insert['Sales'] ) / 8
+#         hist_insert['Lag7w_sum_sls_upd'] = hist_insert['Lag7w_sum_sls'] - hist_insert['Lag7w_sls'] + hist_insert['Sales']
+#         hist_insert = hist_insert[['SKU', 'Time_ID', 'Year', 'Sales', 'Discount', 'Display', 'Feature', 'Log_sls', 'Lag8w_avg_sls', 'Lag7w_sum_sls_upd']]
+#         hist_insert = hist_insert.rename(columns={'Lag7w_sum_sls_upd': 'Lag7w_sum_sls'})
+#         hist_insert.fillna(0, inplace=True)
 
-        ## Insert results into historical
-        sales_hist = pd.concat([sales_hist, hist_insert], ignore_index=True)
+#         ## Insert results into historical
+#         sales_hist = pd.concat([sales_hist, hist_insert], ignore_index=True)
     
-    return sum(revenue)
-
+#     return sum(revenue)
 sales, med_prices, cal_week, events = process_data()
-# st.write('sales df', sales)
-# st.write('price df', med_prices)
-# st.write('week', cal_week)
-# st.write('events', events)
+start_week_list = cal_week['Start_Date'].to_list()
+
+with st.form(key="all_inputs_form"):
+    c1, c2, c3 = st.columns(3)
+    
+    with c1:
+        week_horizon = st.number_input("Week Horizon", value=0)
+
+    with c2:
+        selected_sku_list = st.multiselect("Select SKU", options, default="All")
+        if "All" in selected_sku_list:
+            if len(selected_sku_list) > 1:
+                selected_sku_list = ["All"]
+                st.warning("If 'All' is selected, no other selections are allowed.")
+                st.multiselect("Select SKU", options, default="All")
+    with c3:
+        start_week = st.selectbox("Start week", start_week_list)
+    
+    st.write("---")
+
+    c4, c5, c6 = st.columns(3)
+    # with c5:
+    #     ndf = st.number_input("Number of display features", value=0, key="ndf")
+    with c4:
+        lim_pro_per_cate_xu = st.number_input(
+            "Max Number of Promotion Items per Week", value=0, key="lim_pro_per_cate_xu"
+        )
+    with c5:
+        lim_dis_per_cate_xu = st.number_input(
+            "Max Number of Display Items per Week", value=0, key="lim_dis_per_cate_xu"
+        )
+    with c6:
+        lim_fea_per_cate_xu = st.number_input(
+            "Max Number of Feature Items per Week", value=0, key="lim_fea_per_cate_xu"
+        )
+
+    st.write("---")
+
+    c7, c8 = st.columns(2)
+
+    with c7:
+        pop_size = st.number_input("GA Population Size", value=10, key="pop_size")
+    with c8:
+        gen_size = st.number_input(
+            "GA Number of Generations", value=100, key="gen_size"
+        )
+
+    submit_button = st.form_submit_button(label="Submit")
+
 
 if submit_button:
+    time_id = cal_week[cal_week['Start_Date'] == start_week]['Time_ID'].iloc[0]
+    st.write('time ID', time_id)
     # TODO: convert to frontend variables
-    start_week = 1375 #search the time id from cal_week dataframe. put start week as a frontend variable with drop down list
+    start_week = time_id #search the time id from cal_week dataframe. put start week as a frontend variable with drop down list
     period = week_horizon
     #zscore = pd.read_csv("assets/Z_scores.csv")
     selected_sku_list = z_score["SKU"].tolist()
@@ -282,7 +293,7 @@ if submit_button:
     price_opt_number = 4
     ndf = 2
     CFG = {
-        "sku_num": int(sku_num),  # no of sku
+        "sku_num": num_of_sku,  # no of sku
         "h": week_horizon,  # week horizon
         "price_opt_num": price_opt_number,  # num of pricing options dvar
         "ndf": ndf,  # num of display, feature dvar

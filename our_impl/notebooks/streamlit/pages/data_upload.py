@@ -7,8 +7,9 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, mean_absolu
 #from helper_demand_functions import *
 from tqdm import tqdm
 from stqdm import stqdm
+from my_utils import utils
 
-
+utils.add_logo()
 # class Upload:
 #     @staticmethod
 #     def upload_store_data():
