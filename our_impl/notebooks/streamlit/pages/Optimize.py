@@ -19,398 +19,38 @@ from pymoo.core.mutation import Mutation
 from pymoo.core.crossover import Crossover
 import streamlit as st
 import pandas as pd
-# import pages.Data_upload
-# from pages.Data_upload import Solution
+import sys
+import os
 
-
-if 'result' in st.session_state:
-    st.write("Data loaded!")
-    st.write(st.session_state['result'])
+if 'coeff' in st.session_state:
+    st.success("Coefficient data loaded!")
+    coeff = pd.DataFrame(st.session_state['coeff'])
 else:
-    st.write("Please upload data")
+    coeff = pd.read_csv('assets/coefficients.csv')
+    st.warning("Pre-loaded data taken")
+    
+if 'z_score' in st.session_state:
+    st.success("Z-Score data loaded!")
+    z_score = pd.DataFrame(st.session_state['z_score'])
+    z_score = z_score.reset_index()
+    z_score.rename(columns={z_score.columns[0]: 'SKU'}, inplace=True)
+    st.write('zscore loaded',z_score)
+else:
+    z_score = pd.read_csv('assets/Z_scores.csv')
+    st.warning("Pre loaded data loaded")
+
+scripts_dir = os.path.join(os.path.dirname(__file__), "..", "scripts")
+sys.path.append(scripts_dir)
+
+from scripts import revenue_estimation
+from scripts import pop_ga
 
 utils.add_logo()
-
-def init_price_list(x: int, y: int) -> np.ndarray:
-    """
-    Initialize the price list based on the given dimensions.
-
-    Parameters:
-    - x (int): Number of SKUs.
-    - y (int): Time horizon.
-
-    Returns:
-    - np.ndarray: An array of price values.
-    """
-    size = x * y
-    values = np.arange(size * 10, 0, -10)
-    return values
-
-
-class SKUPopulationSampling(Sampling):
-    """
-    Custom sampling method for generating the initial population of all feasible solutions
-    with uniqueness check and trial limit.
-    """
-
-    def __init__(self, cfg, pop_size, max_trials=10):
-        super().__init__()
-        self.cfg = cfg  # Configuration dictionary containing problem parameters
-        self.pop_size = pop_size  # The size of the population to generate
-        self.max_trials = max_trials  # Maximum trials to find a unique solution
-
-    def _do(self, problem=None, n_samples=None, **kwargs):
-        # Configuration parameters
-        pop_size = self.pop_size
-        nc = self.cfg["sku_num"]
-        h = self.cfg["h"]
-        price_ga = self.cfg["price_opt_num"]
-        ndf = self.cfg["ndf"]
-        lim_pro_per_cate_xu = self.cfg["lim_pro_per_cate_xu"]
-        lim_dis_per_cate_xu = self.cfg["lim_dis_per_cate_xu"]
-        lim_fea_per_cate_xu = self.cfg["lim_fea_per_cate_xu"]
-
-        # Initialize the population set to ensure uniqueness
-        unique_solutions = set()
-        sku_pop = np.zeros((pop_size, nc * h * (price_ga + ndf)), dtype=int)
-
-        s = 0
-        while s < pop_size:
-            trials = 0
-            while trials < self.max_trials:
-                x_sku_pop = np.zeros((nc * h, (price_ga + ndf)), dtype=int)
-                start_row = 0
-                for pop_t in range(h):
-                    end_row = start_row + nc
-                    sku_indices = np.random.permutation(nc)
-
-                    num_discounted = np.random.randint(0, lim_pro_per_cate_xu + 1)
-                    for sku_idx in sku_indices[:num_discounted]:
-                        discount_idx = np.random.choice(price_ga)
-                        x_sku_pop[start_row + sku_idx, discount_idx] = 1
-
-                    discounted_skus = sku_indices[:num_discounted]
-                    num_display = np.random.randint(
-                        0, min(lim_dis_per_cate_xu, num_discounted) + 1
-                    )
-                    num_feature = np.random.randint(
-                        0, min(lim_fea_per_cate_xu, num_discounted) + 1
-                    )
-                    sample_d = np.random.choice(
-                        discounted_skus, num_display, replace=False
-                    )
-                    sample_f = np.random.choice(
-                        discounted_skus, num_feature, replace=False
-                    )
-
-                    for sku_idx in sample_d:
-                        x_sku_pop[start_row + sku_idx, price_ga] = 1
-                    for sku_idx in sample_f:
-                        x_sku_pop[start_row + sku_idx, price_ga + 1] = 1
-
-                    start_row = end_row
-
-                # Flatten and convert to tuple for hashability
-                flat_solution = tuple(x_sku_pop.flatten())
-                if flat_solution not in unique_solutions:
-                    unique_solutions.add(flat_solution)
-                    sku_pop[s, :] = np.array(flat_solution)
-                    s += 1  # Increment if a unique solution is found
-                    break  # Exit the trial loop
-                else:
-                    trials += 1  # Increment trial count and try again
-
-        return sku_pop
-
-
-class SwapMutation(Mutation):
-    """
-    Custom mutation operator for the GA where we swap rows in the candiate solution (2d array)
-    """
-
-    def __init__(self, cfg, prob=0.9):
-        super().__init__()
-        self.prob = prob
-        self.cfg = cfg
-        self.rows = self.cfg["sku_num"] * self.cfg["h"]
-
-    def _do(self, problem, pop, **kwargs):
-        # print(type(pop), pop.shape, pop)
-        pop_reshaped = pop.reshape(
-            (-1, self.rows, self.cfg["price_opt_num"] + self.cfg["ndf"])
-        )
-
-        # print(f"{len(pop)=}, {pop_reshaped.shape=}")
-        # no of candidates to mutate
-        num_to_mutate = int(len(pop) * self.prob)
-        # print(f"{num_to_mutate=}")
-
-        # random select indices of candidates to mutate
-        indices_to_mutate = np.random.choice(len(pop), num_to_mutate, replace=False)
-
-        for idx in indices_to_mutate:
-            # Randomly choose two rows to swap
-            row_idx1, row_idx2 = np.random.choice(self.rows, 2, replace=False)
-
-            # Swap the rows
-            pop_reshaped[idx, [row_idx1, row_idx2]] = pop_reshaped[
-                idx, [row_idx2, row_idx1]
-            ]
-
-        mutated_pop = pop_reshaped.reshape((-1, pop.shape[1]))
-        return mutated_pop
-
-
-class SwapCrossover(Crossover):
-    """
-    Custom crossover operator for the GA where we swap rows across candiate solutions (2d array)
-    """
-
-    def __init__(self, cfg, prob=0.9, n_rows_to_swap=1, n_offsprings=2):
-        super().__init__(2, 2)
-        self.prob = prob
-        self.cfg = cfg
-        self.rows = self.cfg["sku_num"] * self.cfg["h"]
-        self.n_rows_to_swap = n_rows_to_swap
-
-    def _do(self, problem, X, **kwargs):
-        p1, p2 = X
-
-        # Reshape parents into 3D arrays
-        p1_reshaped = p1.reshape(
-            (-1, self.rows, self.cfg["price_opt_num"] + self.cfg["ndf"])
-        )
-        p2_reshaped = p2.reshape(
-            (-1, self.rows, self.cfg["price_opt_num"] + self.cfg["ndf"])
-        )
-
-        # Randomly select solutions to perform crossover
-        do_crossover = np.random.random() < self.prob
-
-        # random crossover with the same row
-        # if do_crossover:
-        # # Randomly choose rows to swap
-        # row_indices = np.random.choice(
-        #     self.rows, self.n_rows_to_swap, replace=False
-        # )
-
-        # # Swap the rows between parents
-        # for row_idx in row_indices:
-        #     p1_reshaped[0, row_idx], p2_reshaped[0, row_idx] = (
-        #         p2_reshaped[0, row_idx],
-        #         p1_reshaped[0, row_idx],
-        #     )
-
-        if do_crossover:
-            # Randomly choose rows to swap
-            row_indices_p1 = np.random.choice(
-                self.rows, self.n_rows_to_swap, replace=False
-            )
-            row_indices_p2 = np.random.choice(
-                self.rows, self.n_rows_to_swap, replace=False
-            )
-            random_swaps = zip(row_indices_p1, row_indices_p2)
-            # debug
-            # print(row_indices_p1, row_indices_p2)
-            # for pair in random_swaps:
-            #     print(pair)
-            # Swap the selected rows between parents
-            for idx_p1, idx_p2 in random_swaps:
-                p1_reshaped[0, idx_p1], p2_reshaped[0, idx_p2] = (
-                    p2_reshaped[0, idx_p2].copy(),
-                    p1_reshaped[0, idx_p1].copy(),
-                )
-
-        Q = np.copy(X)
-
-        # Reshape back to 2D arrays
-        Q[0] = p1_reshaped.reshape(-1, p1.shape[1])
-        Q[1] = p2_reshaped.reshape(-1, p2.shape[1])
-
-        return Q
-
-
-class PromotionOptimizationProblem(ElementwiseProblem):
-    def __init__(self):
-        self.cfg = CFG
-        self.sku_ndvar = (
-            self.cfg["price_opt_num"] + self.cfg["ndf"]
-        )  # no of dvar per sku, cols
-        self.rows = (
-            self.cfg["sku_num"] * self.cfg["h"]
-        )  # no of rows in the 2d array of candidate soln
-        self.n_var = self.rows * self.sku_ndvar
-        self.sku_num = self.cfg["sku_num"]
-        self.price_opt_num = self.cfg["price_opt_num"]
-
-        super().__init__(
-            n_var=self.n_var,
-            n_obj=1,
-            n_constr=self.cfg["sku_num"] * self.cfg["h"] * self.cfg["constraint_num"],
-            xl=np.zeros(self.n_var),
-            xu=np.ones(self.n_var),
-        )
-
-    def _evaluate(self, x, out, *args, **kwargs):
-        can_sol = x.reshape((self.rows, self.sku_ndvar))  # candidate solution
-
-        ### CONSTRAINTS
-        cv = self._calculate_constraints(can_sol)
-        out["G"] = cv
-
-        # If there are any violations, set the objective value to a large negative value
-        if np.any(cv > 0):
-            out["F"] = -np.inf
-            return
-
-        ### PROFIT CALCULATION
-        profit = self._calculate_profit(can_sol)
-        out["F"] = -profit
-
-    def _calculate_constraints(self, can_sol):
-        # cv: constraints per sku
-        cv1 = np.zeros(can_sol.shape[0], dtype=int)
-        for i, row in enumerate(can_sol):
-            # constraint 1: at most 1 price flag
-            if np.sum(row[: self.price_opt_num]) not in [0, 1]:
-                # print("constaint 1")
-                cv1[i] = 1
-            # constraint 2: no display or feature if no promo
-            if np.all(row[: self.price_opt_num] == 0) and (row[4] == 1 or row[5] == 1):
-                # print("constaint 2")
-                cv1[i] = 1
-
-        # relax constraints work for default mutation, crossover
-        # cv = cv1
-        # cv2: constraints per week
-        cv2 = np.zeros(can_sol.shape[0], dtype=int)
-        promo_count = display_count = feature_count = 0
-        # print(f"{can_sol=}, {self.sku_num=}")
-        for i in range(0, len(can_sol), self.sku_num):
-            # print(f"{i=}")
-            # for j in range(0, len(can_sol), cfg['sku_num']):
-            #     promo_count = np.sum(can_sol[i:i+cfg['sku_num'], :cfg['price_opt_num']])
-            #     display_count = np.sum(can_sol[i:i+cfg['sku_num'], cfg['price_opt_num']:5])
-            #     feature_count = np.sum(can_sol[i:i+cfg['sku_num'], 5:])
-            # for j in range(0, len(can_sol), self.sku_num):
-
-            promo_array = can_sol[i : i + self.sku_num, : self.price_opt_num]
-            display_array = can_sol[
-                i : i + self.sku_num, self.price_opt_num : self.price_opt_num + 1
-            ]
-            feature_array = can_sol[i : i + self.sku_num, self.price_opt_num + 1 :]
-            # print(f"x {promo_array=}")
-            # print(f"{promo_array.shape=}")
-            # print(f"x {display_array=}")
-            # print(f"{display_array.shape=}")
-            # print(f"x {feature_array=}")
-            # print(f"{feature_array.shape=}")
-            promo_count = np.sum(promo_array)
-            display_count = np.sum(display_array)
-            feature_count = np.sum(feature_array)
-            # promo_count += np.sum(row[:4])
-            #     # promo_count += np.sum(row[:4])
-            # display_count += np.sum(row[4:5])
-            # feature_count += np.sum(row[5:])
-            # print(promo_count, display_count, feature_count)
-            # for row in can_sol[i:i+self.sku_num]:
-            #     promo_count += np.sum(row[:self.price_opt_num])
-            #     display_count += np.sum(row[self.price_opt_num:5])
-            #     feature_count += np.sum(row[5:])
-            # print(promo_count, display_count, feature_count)
-            # promo count must be less than lim_pro_per_cate_xu
-            if promo_count > self.cfg["lim_pro_per_cate_xu"]:
-                # print(promo_count)
-                for j in range(i, i + self.sku_num):
-                    # print("constaint 3")
-                    cv2[j] = 1
-            # dis count must be less than lim_dis_per_cate_xu
-            elif display_count > self.cfg["lim_dis_per_cate_xu"]:
-                # print(display_count)
-                for j in range(i, i + self.sku_num):
-                    # print("constaint 4")
-                    cv2[j] = 1
-            # fea count must be less than lim_fea_per_cate_xu
-            elif feature_count > self.cfg["lim_fea_per_cate_xu"]:
-                # print(display_count)
-                for j in range(i, i + self.sku_num):
-                    # print("constaint 5")
-                    cv2[j] = 1
-        # Combine all constraint violations
-        cv = np.concatenate((cv1, cv2))
-        return cv
-
-    def _calculate_profit(self, can_sol):
-        profit = 0
-        discounted_values = np.zeros_like(PRICE_LIST)
-
-        # use this to get the simplified 3 columns
-        # discount, price, display
-        converted_sol = self._to_discount_values(can_sol)
-
-        # TODO: For loop to cater to demand function calculation,  also to include display and feature effect on profit
-        for i in range(len(can_sol)):
-            if np.all(can_sol[i, : self.price_opt_num] == 0):
-                discounted_values[i] = PRICE_LIST[i]
-            else:
-                discount_factor = (
-                    0.8
-                    if np.array_equal(can_sol[i, :4], [0, 0, 0, 1])
-                    else (
-                        0.6
-                        if np.array_equal(can_sol[i, :4], [0, 0, 1, 0])
-                        else (
-                            0.4
-                            if np.array_equal(can_sol[i, :4], [0, 1, 0, 0])
-                            else (
-                                0.2
-                                if np.array_equal(can_sol[i, :4], [1, 0, 0, 0])
-                                else 1
-                            )
-                        )
-                    )
-                )
-                discounted_values[i] = discount_factor * PRICE_LIST[i]
-
-        # Calculate profit
-        profit = np.sum(discounted_values)
-        return profit
-
-    def _to_discount_values(self, can_sol):
-        """
-        Converts a binary array to a discount values array with preserved columns.
-
-        Transforms the first four binary columns of an input array into a single
-        discount column based on predefined discount rates (0.8, 0.6, 0.4, 0.2).
-        The display and feature columns from the input are preserved in the output.
-
-        Parameters:
-        - can_sol (numpy.ndarray): The input binary array with shape (n, 6).
-
-        Returns:
-        - numpy.ndarray: The transformed array with shape (n, 3), including the
-        discount value and the original last two columns.
-        """
-        discount_values = np.array([0.8, 0.6, 0.4, 0.2])
-        result = np.zeros((can_sol.shape[0], 3))
-
-        discount_cols = can_sol[:, :4]
-
-        for i, row in enumerate(can_sol):
-            if row.sum() > 0:
-                discount_index = np.argmax(row == 1)
-                result[i, 0] = discount_values[discount_index]
-            result[i, 1] = row[4]
-            result[i, 2] = row[5]
-            # print(f"original row = {row}, converted = {result[i]}")
-
-        return result
-
 
 with st.form(key="all_inputs_form"):
     c1, c2 = st.columns(2)
     with c1:
-        sku_num = st.text_input("Number of SKUs")
+        sku_num = st.number_input("Number of SKUs", value=0)
     with c2:
         week_horizon = st.number_input("Week Horizon", value=0)
 
@@ -445,7 +85,197 @@ with st.form(key="all_inputs_form"):
 
     submit_button = st.form_submit_button(label="Submit")
 
+def process_data():
+    file_dir = 'assets/combined_milk_final.csv'
+    time_dir = 'assets/time.csv'
+    #zscore_dir = z_score
+    raw = pd.read_csv(file_dir)
+    calendar = pd.read_csv(time_dir)
+    zscore = z_score
+    #st.write('zscore', zscore)
+
+    sales = raw[raw['Store_ID'] == 236117].copy()
+    # sales['Display'] = np.maximum(sales['Display1'], sales['Display2'])
+    # sales['Feature'] = np.maximum.reduce([sales['Feature1'], sales['Feature2'], sales['Feature3'], sales['Feature4']])
+    sales.loc[:, 'Display'] = np.maximum(sales['Display1'], sales['Display2'])
+    sales.loc[:, 'Feature'] = np.maximum.reduce([sales['Feature1'], sales['Feature2'], sales['Feature3'], sales['Feature4']])
+
+    ## Build rolling L8W Avg Sales & L7W Sum Sales
+    sales.sort_values(by=['SKU', 'Time_ID'], inplace=True)
+    sales['Lag8w_avg_sls'] = sales.groupby('SKU')['Sales'].transform(lambda x: x.rolling(window=8, min_periods=1).mean())
+    sales['Lag7w_sum_sls'] = sales.groupby('SKU')['Sales'].transform(lambda x: x.rolling(window=7, min_periods=1).sum())
+    sales['Log_sls'] = -np.log(sales['Sales'])
+
+    ## Calcualte Price Discount (Discount Index) from Landing Price
+    ## Get lower bound price of 95 percentile prices of each SKUxYear
+    lb_prices =  sales.groupby(['SKU', 'Year'])['Price'].max() * 0.95
+    lb_prices = lb_prices.reset_index(name='lb_price')
+    sales = pd.merge(sales, lb_prices, on=['SKU', 'Year'], how='left')
+    
+    ## Filter prices for top 5% and get Median Price 
+    med_prices = sales[sales['Price'] >= sales['lb_price']][['SKU', 'Year', 'Price']]
+    med_prices = med_prices.groupby(['SKU', 'Year'])['Price'].median().reset_index(name='med_price')
+    sales = pd.merge(sales, med_prices, on=['SKU', 'Year'], how='left')
+    ## Calculate Discount Index
+    sales['pc_disc'] = sales['med_price'] / sales['Price']
+
+    #st.write(sales)
+    ## Apply z-standardization on discount
+    sales = pd.merge(sales, zscore, on=['SKU'], how='left')
+    sales['z_disc'] = ( sales['pc_disc'] - sales['Mean'] ) / sales['Std_deviation']
+
+    ## Clean up table
+    sales = sales[['SKU', 'Time_ID', 'Year', 'Sales', 'z_disc', 'Display', 'Feature', 'Log_sls', 'Lag8w_avg_sls', 'Lag7w_sum_sls']]
+    sales = sales.rename(columns={'z_disc': 'Discount'})
+
+    cal_week = calendar[['IRI Week', 'Calendar week starting on', 'Calendar week ending on']]
+    cal_week = cal_week.rename(columns={'IRI Week': 'Time_ID', 
+                                        'Calendar week starting on': 'Start_Date', 
+                                        'Calendar week ending on': 'End_Date'})
+
+    #cal_week.to_csv('calendar_week.csv', index=False)
+    events = calendar[['IRI Week', 'Halloween', 'Halloween_1', 'Thanksgiving', 'Thanksgiving_1', 'Christmas', 'Christmas_1', 'NewYear', 'President', 'President_1', 'Easter', 'Easter_1', 'Memorial', 'Memorial_1', '4thJuly', '4thJuly_1', 'Labour', 'Labour_1']]
+    events = events.rename(columns={'IRI Week': 'Time_ID'})
+    events.fillna(0, inplace=True)
+    
+    del lb_prices
+    
+    return sales, med_prices, cal_week, events
+
+
+def ga_demand():
+    sales, med_prices, cal_week, events = process_data()
+    sales = sales
+    cal_week = cal_week
+    events = events
+    dd_coeff = coeff
+    prices = med_prices
+    all_skus = sorted(sales['SKU'].unique())
+
+    time_year = sales[['Time_ID', 'Year']].copy()
+    time_year = time_year.drop_duplicates()
+
+    ## To comment out later parameters come from GA function
+    sku_list = ['7_1_42365_22800', '88_6_99998_59504', '88_6_99998_59509','88_6_99998_59597', '7_1_42365_26400']
+    sku_list = sorted(sku_list)
+    start = 1375
+    period = 8
+
+    ## To comment later ga_output comes from GA function
+    ga_output = {
+        'Discount': np.random.choice(np.arange(5, 55, 5)/100, len(sku_list)*period) ,  # Random discounts
+        'Feature': np.random.choice([0, 1], len(sku_list)*period),  # Random features
+        'Display': np.random.choice([0, 1], len(sku_list)*period) # Random displays
+    }
+    ga_output = pd.DataFrame(ga_output)
+    
+    #combined the ga_demand function
+    histr = start - 1
+    end =  start + period
+
+    idx_frame = [(SKU, Time_ID) for SKU in sku_list for Time_ID in range(start, end)]
+    idx_frame = pd.DataFrame(idx_frame, columns=['SKU', 'Time_ID'])
+
+    sales_hist = sales[(sales['SKU'].isin(sku_list)) & (sales['Time_ID']>=histr-period-5) & (sales['Time_ID']<=histr)].copy()
+
+    ## Preapare GA dataframe
+    ga_df = ga_output.copy()
+    ga_df = pd.concat([idx_frame, ga_df], axis=1)
+    ga_df = pd.merge(ga_df, z_score, on=['SKU'], how='left')
+    ga_df['z_disc'] = (ga_df['Discount'] - ga_df['Mean']) / ga_df['Std_deviation']
+    ga_df = ga_df[['SKU', 'Time_ID', 'z_disc', 'Feature', 'Display']]
+    ga_df = ga_df.rename(columns={'z_disc': 'Discount'})
+
+    ## Create Competitor Matrix
+    comp_matrix_columns = [f'{sku}_{promo}' for sku in all_skus for promo in ['Discount', 'Display', 'Feature', 'Sales']]
+    comp_matrix = pd.DataFrame(columns=comp_matrix_columns, index=range(len(sku_list)*period))
+    comp_matrix = pd.concat([idx_frame, comp_matrix], axis=1)
+    for sku in sku_list:
+        for promo in ['Discount', 'Display', 'Feature']:
+            neg = -1 if promo in ['Display', 'Feature'] else 1
+            tmp = list(ga_df[ga_df['SKU']==sku][promo] * neg) * period
+            tmp = pd.DataFrame(tmp)
+            comp_matrix[sku + "_" + promo] = tmp
+            comp_matrix.loc[comp_matrix['SKU'] == sku, [sku + "_" + promo]] = 0
+    comp_matrix.fillna(0, inplace=True)
+
+    # comp_matrix.head()
+
+    revenue = []
+
+    ## Iterate through each week through the demand function
+    ## Obtain sales prediction and feed back into historical sales for picking\
+
+    for week in range(start, end):
+
+        dd_coeff_val = dd_coeff[sku_list].values
+        year = time_year[time_year['Time_ID']==week]['Year'].values[0]
+        ga_tmp = ga_df[ga_df['Time_ID']==week].copy()
+        for promo in ['Discount', 'Feature', 'Display']:
+            merge = sales_hist[sales_hist['Time_ID']==week-1][['SKU', promo]].copy()
+            merge = merge.rename(columns={promo: promo+"lag"})
+            ga_tmp = pd.merge(ga_tmp, merge, on=['SKU'], how='left')
+
+        merge = sales_hist[sales_hist['Time_ID']==week-1][['SKU', 'Log_sls', 'Lag8w_avg_sls']].copy()
+        merge = merge.rename(columns={'Log_sls': 'Saleslag', 'Lag8w_avg_sls': 'Sales_mov_avg'})
+        ga_tmp = pd.merge(ga_tmp, merge, on=['SKU'], how='left')
+
+        events_tmp = events[events['Time_ID']==week].drop(columns = 'Time_ID').copy()
+        events_tmp = pd.concat([events_tmp]*len(sku_list), ignore_index=True)
+        ga_tmp = pd.concat([ga_tmp, events_tmp], axis=1)
+
+        comp_tmp = comp_matrix[comp_matrix['Time_ID']==week].drop(columns = 'Time_ID').copy()
+        for sku in sku_list:
+            tmp = sales_hist[(sales_hist['SKU']==sku) & (sales_hist['Time_ID']==week-1)]['Sales'].item()
+            comp_tmp[sku+"_Sales"] = tmp
+            comp_tmp.loc[comp_tmp['SKU'] == sku, [sku + "_Sales"]] = 0
+
+        ga_tmp = pd.merge(ga_tmp, comp_tmp, on=['SKU'], how='left')
+
+        ga_val = ga_tmp.drop(columns=['SKU', 'Time_ID']).values
+
+        sales_output = np.diag(ga_val.dot(dd_coeff_val))
+        prices_tmp = prices[(prices['SKU'].isin(sku_list)) & (prices['Year']==year)]['med_price'].values
+
+        revenue.append(sum(sales_output * prices_tmp))
+
+        ## Prep for historical insert
+        prep_tmp = sales_hist[sales_hist['Time_ID']==week-1][['SKU', 'Lag7w_sum_sls']].copy()
+        hist_prep = sales_hist[sales_hist['Time_ID']==week-7][['SKU', 'Sales']]
+        hist_prep = hist_prep.rename(columns={'Sales': 'Lag7w_sls'})
+        hist_prep = pd.merge(hist_prep, prep_tmp, on=['SKU'], how='left')
+        hist_prep = hist_prep.drop(columns=['SKU'])
+
+        ## Build historical insert
+        hist_insert = ga_tmp[['SKU', 'Time_ID', 'Discount', 'Display', 'Feature']]
+        hist_insert['Year'] = year
+        hist_insert['Sales'] = sales_output
+        hist_insert['Log_sls'] =  -np.log(hist_insert['Sales'])
+        hist_insert = pd.concat([hist_insert, hist_prep], axis=1)
+        hist_insert['Lag8w_avg_sls'] = ( hist_insert['Lag7w_sum_sls'] + hist_insert['Sales'] ) / 8
+        hist_insert['Lag7w_sum_sls_upd'] = hist_insert['Lag7w_sum_sls'] - hist_insert['Lag7w_sls'] + hist_insert['Sales']
+        hist_insert = hist_insert[['SKU', 'Time_ID', 'Year', 'Sales', 'Discount', 'Display', 'Feature', 'Log_sls', 'Lag8w_avg_sls', 'Lag7w_sum_sls_upd']]
+        hist_insert = hist_insert.rename(columns={'Lag7w_sum_sls_upd': 'Lag7w_sum_sls'})
+        hist_insert.fillna(0, inplace=True)
+
+        ## Insert results into historical
+        sales_hist = pd.concat([sales_hist, hist_insert], ignore_index=True)
+    
+    return sum(revenue)
+
+sales, med_prices, cal_week, events = process_data()
+# st.write('sales df', sales)
+# st.write('price df', med_prices)
+# st.write('week', cal_week)
+# st.write('events', events)
+
 if submit_button:
+    # TODO: convert to frontend variables
+    start_week = 1375 #search the time id from cal_week dataframe. put start week as a frontend variable with drop down list
+    period = week_horizon
+    #zscore = pd.read_csv("assets/Z_scores.csv")
+    selected_sku_list = z_score["SKU"].tolist()
+
     POP_SIZE = pop_size
     GEN_SIZE = gen_size
     # Fixed Variables
@@ -461,81 +291,93 @@ if submit_button:
         "lim_fea_per_cate_xu": lim_fea_per_cate_xu,  # num of feature items upper bound
         "constraint_num": 2,  # simplify to 2 high level constraints
     }
-
+    print(f"{CFG=}")
     # st.write(CFG)
-    PRICE_LIST = init_price_list(CFG["sku_num"], CFG["h"])
+    PRICE_LIST = pop_ga.init_price_list(CFG["sku_num"], CFG["h"])
     # st.write(PRICE_LIST)
 
+    #try:
+    print(sales)
+    print(f"init problem")
+    # TODO: convert to use computed demand model DFs
+    rev_est = revenue_estimation.RevenueEstimation(
+        # sales_dir="assets/processed_sales.csv", # process_data_sls.ipynb
+        # cal_dir="assets/calendar_week.csv",# process_data_sls.ipynb
+        # events_dir="assets/events.csv", # process_data_sls.ipynb
+        # zscore_dir="assets/Z_scores.csv", # demand func .ipynb
+        # dd_coeff_dir="assets/Coefficients.csv", # demand func .ipynb
+        # prices_dir="assets/prices.csv", # process_data_sls.ipynb            
+        sales=sales,
+        cal_week=cal_week,
+        events=events,
+        zscore=z_score,
+        dd_coeff=coeff,
+        prices=med_prices,
+    )
+    print('rev', rev_est)
+    problem = pop_ga.PromotionOptimizationProblem(
+        cfg=CFG,
+        rev_est=rev_est,
+        selected_sku_list=selected_sku_list,
+        start_week=start_week,
+        period=period,
+    )
+    print('prob', problem)
+    algo_best_ops = GA(
+        pop_size=POP_SIZE,
+        sampling=pop_ga.SKUPopulationSampling(cfg=problem.cfg, pop_size=POP_SIZE),
+        # mutation=pop_ga.SwapMutation(cfg=problem.cfg, prob=0.4),
+        # crossover=SBX(prob=0.2, eta=15),
+        mutation=PolynomialMutation(prob=0.6, eta=20),
+        crossover=TwoPointCrossover(prob=0.4),
+        eliminate_duplicates=True,
+    )
+    print('best ops', algo_best_ops)
+    # label = "SBX 0.2 Swap Mutation 0.4"
+    label = "TwoPointCrossover 0.4, PM 0.6"
 
-if __name__ == "__main__":
-    try:
-        
-        problem = PromotionOptimizationProblem()
-        algo_custom_ops = GA(
-            pop_size=POP_SIZE,
-            sampling=SKUPopulationSampling(cfg=problem.cfg, pop_size=POP_SIZE),
-            mutation=SwapMutation(cfg=problem.cfg, prob=0.9),
-            crossover=SwapCrossover(cfg=problem.cfg, prob=0.9, n_rows_to_swap=10),
-            eliminate_duplicates=True,
-        )
+    start_time = time.time()
+    res = minimize(
+        problem,
+        algo_best_ops,
+        ("n_gen", GEN_SIZE),
+        seed=2,
+        save_history=True,
+        verbose=True,
+    )
+    end_time = time.time()
 
-        algo_vanilla_ops = GA(
-            pop_size=POP_SIZE,
-            sampling=SKUPopulationSampling(cfg=problem.cfg, pop_size=POP_SIZE),
-            crossover=PointCrossover(prob=0.8, n_points=2),
-            mutation=PolynomialMutation(prob=0.3, repair=RoundingRepair()),
-            eliminate_duplicates=True,
-        )
+    time = end_time - start_time
 
-        start_time_custom = time.time()
-        res_custom = minimize(
-            problem,
-            algo_custom_ops,
-            ("n_gen", GEN_SIZE),
-            seed=2,
-            save_history=True,
-            verbose=True,
-        )
-        end_time_custom = time.time()
+    rows = CFG["sku_num"] * CFG["h"]
+    cols = CFG["price_opt_num"] + CFG["ndf"]
+    formatted_schedule = problem._to_discount_values(res.X.reshape((rows, cols)))
 
-        start_time_vanilla = time.time()
-        res_vanilla = minimize(
-            problem,
-            algo_vanilla_ops,
-            ("n_gen", GEN_SIZE),
-            seed=2,
-            save_history=True,
-            verbose=True,
-        )
-        end_time_vanilla = time.time()
+    st.dataframe(formatted_schedule)
 
-        time_custom = end_time_custom - start_time_custom
-        time_vanilla = end_time_vanilla - start_time_vanilla
+    revenue = -res.F[0]  # reverse the sign back to pos
+    formatted_revenue = f"{revenue:.2f}"
+    formatted_time = f"{time:.2f}"
 
-        st.success(f"Custom operators time: {time_custom} seconds")
-        st.success(f"Vanilla operators time: {time_vanilla} seconds")
-        # print(f"Custom operators time: {time_custom} seconds")
-        # print(f"Vanilla operators time: {time_vanilla} seconds")
-        st.success(f"Custom operators solution quality: {res_custom.F}")
-        st.success(f"Vanilla operators solution quality: {res_vanilla.F}")
-        # print(f"Custom operators solution quality: {res_custom.F}")
-        # print(f"Vanilla operators solution quality: {res_vanilla.F}")
+    markdown_text = f"""
+    **Expected Revenue:** ${formatted_revenue}  
 
-        # Plotting history (https://pymoo.org/misc/convergence.html)
-        fig, ax = plt.subplots()
-        n_evals = np.array([e.evaluator.n_eval for e in res_custom.history])
-        opt = np.array([e.opt[0].F for e in res_custom.history])
-        ax.plot(n_evals, opt, "--", label="res_custom")
+    **Time Taken to Compute:** {formatted_time} seconds
+    """
 
-        n_evals = np.array([e.evaluator.n_eval for e in res_vanilla.history])
-        opt = np.array([e.opt[0].F for e in res_vanilla.history])
-        ax.plot(n_evals, opt, "--", label="res_vanilla")
+    st.markdown(markdown_text)
 
-        ax.set_title("Convergence of res_custom & res_vanilla")
-        ax.set_xlabel("n_eval")
-        ax.set_ylabel("f_min")
-        ax.legend(loc="upper right")
-        # plt.show()
-        st.pyplot(fig)
-    except:
-        "Please input the values for the GA to run :)"
+    # Plotting history (https://pymoo.org/misc/convergence.html)
+    fig, ax = plt.subplots()
+    n_evals = np.array([e.evaluator.n_eval for e in res.history])
+    opt = np.array([e.opt[0].F for e in res.history])
+    ax.plot(n_evals, opt, "--", label=label)
+
+    ax.set_title("Analysis of Convergence")
+    ax.set_xlabel("Number of Evaluations")
+    ax.set_ylabel("f min")
+    ax.legend(loc="upper right")
+    # plt.show()
+    st.pyplot(fig)
+    #except:
+    #    "Please input the values for the GA to run :)"

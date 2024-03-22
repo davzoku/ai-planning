@@ -1,35 +1,63 @@
 import pandas as pd
 import numpy as np
+import streamlit as st
+
+import warnings
+from pandas.errors import SettingWithCopyWarning
+
+warnings.simplefilter(action="ignore", category=(SettingWithCopyWarning))
+
+warnings.filterwarnings(
+    "ignore",
+    category=FutureWarning,
+    message="Downcasting object dtype arrays on .fillna, .ffill, .bfill is deprecated",
+)
+
+warnings.filterwarnings(
+    "ignore", category=RuntimeWarning, message="invalid value encountered in log"
+)
 
 
 class RevenueEstimation:
     def __init__(
         self,
-        sales_dir="../assets/processed_sales.csv", # process_data_sls.ipynb
-        cal_dir="../assets/calendar_week.csv",# process_data_sls.ipynb
-        events_dir="../assets/events.csv", # process_data_sls.ipynb
-        zscore_dir="../assets/Z_scores.csv", # demand func .ipynb
-        dd_coeff_dir="../assets/Coefficients.csv", # demand func .ipynb
-        prices_dir="../assets/prices.csv", # process_data_sls.ipynb
-        sales=None,
-        cal_week=None,
-        events=None,
-        zscore=None,
-        dd_coeff=None,
-        prices=None,
+        # sales_dir="assets/processed_sales.csv", # process_data_sls.ipynb
+        # cal_dir="assets/calendar_week.csv",# process_data_sls.ipynb
+        # events_dir="assets/events.csv", # process_data_sls.ipynb
+        # zscore_dir="assets/Z_scores.csv", # demand func .ipynb
+        # dd_coeff_dir="assets/Coefficients.csv", # demand func .ipynb
+        # prices_dir="assets/prices.csv", # process_data_sls.ipynb
+        sales,
+        cal_week,
+        events,
+        zscore,
+        dd_coeff,
+        prices,
     ):
 
-        self.sales = pd.read_csv(sales_dir) if sales is None else sales
-        self.cal_week = pd.read_csv(cal_dir) if cal_week is None else cal_week
-        self.events = pd.read_csv(events_dir) if events is None else events
-        self.zscore = pd.read_csv(zscore_dir) if zscore is None else zscore
-        self.dd_coeff = (
-            pd.read_csv(dd_coeff_dir).drop(columns="Unnamed: 0")
-            if dd_coeff is None
-            else dd_coeff
-        )
-        self.prices = pd.read_csv(prices_dir) if prices is None else prices
+        # self.sales = pd.read_csv(sales_dir) if sales is None else sales
+        self.sales = sales
+        print('sales1',sales)
+        print('sales2', self.sales)
+        # self.cal_week = pd.read_csv(cal_dir) if cal_week is None else cal_week
+        # self.events = pd.read_csv(events_dir) if events is None else events
+        # self.zscore = pd.read_csv(zscore_dir) if zscore is None else zscore
+        self.cal_week = cal_week
+        self.events = events
+        self.zscore = zscore
+        self.dd_coeff = dd_coeff
+        # self.dd_coeff = (
+        #     pd.read_csv(dd_coeff_dir).drop(columns="Unnamed: 0")
+        #     if dd_coeff is None
+        #     else dd_coeff
+        # )
+        # self.prices = pd.read_csv(prices_dir) if prices is None else prices
+        self.prices = prices
+        print('RE', self.prices)
+        # if self.sales:
+        #     print('RE sales', self.sales)
         self.all_skus = self.sales["SKU"].unique()
+        print('RE all sku', self.all_skus)
         self.time_year = self.sales[["Time_ID", "Year"]].copy().drop_duplicates()
 
     def fitness_demand(
@@ -146,10 +174,13 @@ class RevenueEstimation:
             hist_prep = hist_prep.drop(columns=["SKU"])
 
             ## Build historical insert
-            hist_insert = ga_tmp[["SKU", "Time_ID", "Discount", "Display", "Feature"]]
-            hist_insert["Year"] = year
-            hist_insert["Sales"] = sales_output
-            hist_insert["Log_sls"] = -np.log(hist_insert["Sales"])
+            hist_insert = ga_tmp[["SKU", "Time_ID", "Discount", "Display", "Feature"]].copy()
+            # hist_insert["Year"] = year
+            # hist_insert["Sales"] = sales_output
+            # hist_insert["Log_sls"] = -np.log(hist_insert["Sales"])
+            hist_insert.loc[:, "Year"] = year
+            hist_insert.loc[:, "Sales"] = sales_output
+            hist_insert.loc[:, "Log_sls"] = -np.log(hist_insert["Sales"])
             hist_insert = pd.concat([hist_insert, hist_prep], axis=1)
             hist_insert["Lag8w_avg_sls"] = (
                 hist_insert["Lag7w_sum_sls"] + hist_insert["Sales"]
@@ -184,24 +215,24 @@ class RevenueEstimation:
         return sum(revenue)
 
 
-rev_est = RevenueEstimation()
+# rev_est = RevenueEstimation()
 
-# sku_list = ['7_1_42365_22800', '88_6_99998_59504', '88_6_99998_59509','88_6_99998_59597', '7_1_42365_26400']
-# full 36
-sku_list = rev_est.zscore["SKU"].tolist()
-sku_list = sorted(sku_list)
-print(f"{sku_list=}")
-start = 1375
-period = 8
+# # sku_list = ['7_1_42365_22800', '88_6_99998_59504', '88_6_99998_59509','88_6_99998_59597', '7_1_42365_26400']
+# # full 36
+# sku_list = rev_est.zscore["SKU"].tolist()
+# sku_list = sorted(sku_list)
+# print(f"{sku_list=}")
+# start = 1375
+# period = 8
 
-ga_output = {
-    "Discount": np.random.choice(
-        np.arange(5, 55, 5) / 100, len(sku_list) * period
-    ),  # Random discounts
-    "Feature": np.random.choice([0, 1], len(sku_list) * period),  # Random features
-    "Display": np.random.choice([0, 1], len(sku_list) * period),  # Random displays
-}
-ga_output = pd.DataFrame(ga_output)
+# ga_output = {
+#     "Discount": np.random.choice(
+#         np.arange(5, 55, 5) / 100, len(sku_list) * period
+#     ),  # Random discounts
+#     "Feature": np.random.choice([0, 1], len(sku_list) * period),  # Random features
+#     "Display": np.random.choice([0, 1], len(sku_list) * period),  # Random displays
+# }
+# ga_output = pd.DataFrame(ga_output)
 
-revenue = rev_est.fitness_demand(ga_output, sku_list, start, period)
-print(revenue)
+# revenue = rev_est.fitness_demand(ga_output, sku_list, start, period)
+# print(revenue)

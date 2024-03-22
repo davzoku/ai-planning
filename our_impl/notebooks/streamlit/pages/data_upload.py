@@ -259,7 +259,7 @@ class Solution:
 
         final_df.index = [idx.replace('Price', 'Discount') for idx in final_df.index]
         
-        return final_df
+        return final_df, df_z_score
 
 store_data_uploader = st.file_uploader("Upload Store Data", type=['csv'])
 time_data_uploader = st.file_uploader("Upload Time Data", type=['csv'])
@@ -294,7 +294,7 @@ with st.form(key='all_inputs_form_2'):
     
 if submit_button:
     instance = Solution(store_id_input=int(store_id_input), window_size=int(window_size), year_from=int(year_from), year_to=int(year_to), year_test=int(year_test))
-    st.session_state['result'] = instance.calculation()
+    st.session_state['coeff'], st.session_state['z_score'] = instance.calculation()
 
 
 
