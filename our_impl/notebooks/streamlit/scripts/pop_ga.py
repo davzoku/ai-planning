@@ -425,8 +425,8 @@ class PromotionOptimizationProblem(ElementwiseProblem):
             if row.sum() > 0:
                 discount_index = np.argmax(row == 1)
                 result[i, 0] = discount_values[discount_index]
-            result[i, 1] = int(row[4])
-            result[i, 2] = int(row[5])
+            result[i, 1] = int(row[5])
+            result[i, 2] = int(row[4])
             # print(f"original row = {row}, converted = {result[i]}")
 
         result_df = pd.DataFrame(result, columns=["Discount", "Feature", "Display"])
