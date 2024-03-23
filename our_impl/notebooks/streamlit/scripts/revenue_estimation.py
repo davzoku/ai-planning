@@ -20,36 +20,39 @@ warnings.filterwarnings(
 class RevenueEstimation:
     def __init__(
         self,
-        sales_dir="../assets/processed_sales.csv",  # process_data_sls.ipynb
-        cal_dir="../assets/calendar_week.csv",  # process_data_sls.ipynb
-        events_dir="../assets/events.csv",  # process_data_sls.ipynb
-        zscore_dir="../assets/Z_scores.csv",  # demand func .ipynb
-        dd_coeff_dir="../assets/Coefficients.csv",  # demand func .ipynb
-        prices_dir="../assets/prices.csv",  # process_data_sls.ipynb
+        # sales_dir="../assets/processed_sales.csv",  # process_data_sls.ipynb
+        # cal_dir="../assets/calendar_week.csv",  # process_data_sls.ipynb
+        # events_dir="../assets/events.csv",  # process_data_sls.ipynb
+        # zscore_dir="../assets/Z_scores.csv",  # demand func .ipynb
+        # dd_coeff_dir="../assets/Coefficients.csv",  # demand func .ipynb
+        # prices_dir="../assets/prices.csv",  # process_data_sls.ipynb
         sales=None,
         cal_week=None,
         events=None,
-        zscore_tmp=None, ### UPDATED
+        zscore_tmp=None,  ### UPDATED
         zscore=None,
         dd_coeff=None,
-        dd_bias=None, ### UPDATED
+        dd_bias=None,  ### UPDATED
         prices=None,
     ):
-        self.sales = pd.read_csv(sales_dir) if sales is None else sales
-        self.cal_week = pd.read_csv(cal_dir) if cal_week is None else cal_week
-        self.events = pd.read_csv(events_dir) if events is None else events
+        # self.sales = pd.read_csv(sales_dir) if sales is None else sales
+        # self.cal_week = pd.read_csv(cal_dir) if cal_week is None else cal_week
+        # self.events = pd.read_csv(events_dir) if events is None else events
+        self.sales = sales
+        self.cal_week = cal_week
+        self.events = events
         ### START UPDATED
-        self.zscore_tmp = pd.read_csv(zscore_dir) if zscore_tmp is None else zscore_tmp
-        self.zscore_tmp = self.zscore_tmp.rename(columns={'Unnamed: 0': 'SKU'})
-        self.zscore_tmp = self.zscore_tmp.sort_values(by='SKU')
+        # self.zscore_tmp = pd.read_csv(zscore_dir) if zscore_tmp is None else zscore_tmp
+        self.zscore_tmp = zscore_tmp
+        self.zscore_tmp = self.zscore_tmp.rename(columns={"Unnamed: 0": "SKU"})
+        self.zscore_tmp = self.zscore_tmp.sort_values(by="SKU")
         self.zscore = (
-            self.zscore_tmp[['SKU', 'Mean', 'Std_deviation']] 
-            if zscore is None 
+            self.zscore_tmp[["SKU", "Mean", "Std_deviation"]]
+            if zscore is None
             else zscore
         )
-        self.dd_bias = self.zscore_tmp[['SKU', 'bias']] if dd_bias is None else dd_bias
+        self.dd_bias = self.zscore_tmp[["SKU", "bias"]] if dd_bias is None else dd_bias
         ### END UPDATED
-
 
         self.dd_coeff = (
             pd.read_csv(dd_coeff_dir).drop(columns="Unnamed: 0")
@@ -126,7 +129,6 @@ class RevenueEstimation:
                 merge = merge.rename(columns={promo: promo + "lag"})
                 ga_tmp = pd.merge(ga_tmp, merge, on=["SKU"], how="left")
 
-
             ### CHANGE Log_sls to Sales
             merge = sales_hist[sales_hist["Time_ID"] == week - 1][
                 ["SKU", "Sales", "Lag8w_avg_sls"]
@@ -163,7 +165,7 @@ class RevenueEstimation:
             sales_output = np.diag(ga_val.dot(dd_coeff_val))
 
             ### ADD MODEL BIAS
-            bias_tmp = self.dd_bias[self.dd_bias['SKU'].isin(sku_list)]['bias'].values
+            bias_tmp = self.dd_bias[self.dd_bias["SKU"].isin(sku_list)]["bias"].values
             sales_output = sales_output + bias_tmp
 
             prices_tmp = self.prices[
