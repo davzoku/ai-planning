@@ -89,7 +89,8 @@ class RevenueEstimation:
         ga_df = pd.concat([idx_frame, ga_df], axis=1)
         ga_df = pd.merge(ga_df, self.zscore, on=["SKU"], how="left")
         ga_df["z_disc"] = (ga_df["Discount"] - ga_df["Mean"]) / ga_df["Std_deviation"]
-        ga_df["z_disc"] = ga_df["z_disc"] * -1
+        # ga_df["z_disc"] = ga_df["z_disc"] * -1
+        ga_df["z_disc"] = ga_df["z_disc"]
         ga_df = ga_df[["SKU", "Time_ID", "z_disc", "Feature", "Display"]]
         ga_df = ga_df.rename(columns={"z_disc": "Discount"})
 
@@ -111,6 +112,8 @@ class RevenueEstimation:
                 comp_matrix[sku + "_" + promo] = tmp
                 comp_matrix.loc[comp_matrix["SKU"] == sku, [sku + "_" + promo]] = 0
         comp_matrix.fillna(0, inplace=True)
+
+        zscore_tmp = self.zscore[self.zscore['SKU'].isin(sku_list)]
 
         revenue = []
 
@@ -167,12 +170,16 @@ class RevenueEstimation:
             ### ADD MODEL BIAS
             bias_tmp = self.dd_bias[self.dd_bias["SKU"].isin(sku_list)]["bias"].values
             sales_output = sales_output + bias_tmp
+            sales_output[sales_output < 0] = 0
 
             prices_tmp = self.prices[
                 (self.prices["SKU"].isin(sku_list)) & (self.prices["Year"] == year)
             ]["med_price"].values
 
-            revenue.append(sum(sales_output * prices_tmp))
+            discounts_tmp = 2 - (ga_tmp['Discount'].values * zscore_tmp['Std_deviation'].values + zscore_tmp['Mean'].values)
+            other_costs_tmp = ga_tmp['Feature'].values * 5 + ga_tmp['Display'].values * 10
+
+            revenue.append(sum(sales_output * prices_tmp * discounts_tmp - other_costs_tmp))
 
             ## Prep for historical insert
             prep_tmp = sales_hist[sales_hist["Time_ID"] == week - 1][
@@ -187,7 +194,7 @@ class RevenueEstimation:
             hist_insert = ga_tmp[["SKU", "Time_ID", "Discount", "Display", "Feature"]]
             hist_insert["Year"] = year
             hist_insert["Sales"] = sales_output
-            hist_insert["Log_sls"] = -np.log(hist_insert["Sales"])
+            hist_insert["Log_sls"] = -np.log(hist_insert["Sales"]) ## NOT USED ANYMORE
             hist_insert = pd.concat([hist_insert, hist_prep], axis=1)
             hist_insert["Lag8w_avg_sls"] = (
                 hist_insert["Lag7w_sum_sls"] + hist_insert["Sales"]
@@ -206,7 +213,7 @@ class RevenueEstimation:
                     "Discount",
                     "Display",
                     "Feature",
-                    "Log_sls",
+                    "Log_sls",  ## NOT USED ANYMORE
                     "Lag8w_avg_sls",
                     "Lag7w_sum_sls_upd",
                 ]
