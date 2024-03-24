@@ -113,7 +113,7 @@ class RevenueEstimation:
                 comp_matrix.loc[comp_matrix["SKU"] == sku, [sku + "_" + promo]] = 0
         comp_matrix.fillna(0, inplace=True)
 
-        zscore_tmp = self.zscore[self.zscore['SKU'].isin(sku_list)]
+        zscore_tmp_ = self.zscore[self.zscore['SKU'].isin(sku_list)]
 
         revenue = []
 
@@ -176,7 +176,7 @@ class RevenueEstimation:
                 (self.prices["SKU"].isin(sku_list)) & (self.prices["Year"] == year)
             ]["med_price"].values
 
-            discounts_tmp = 2 - (ga_tmp['Discount'].values * zscore_tmp['Std_deviation'].values + zscore_tmp['Mean'].values)
+            discounts_tmp = 2 - (ga_tmp['Discount'].values * zscore_tmp_['Std_deviation'].values + zscore_tmp_['Mean'].values)
             other_costs_tmp = ga_tmp['Feature'].values * 5 + ga_tmp['Display'].values * 10
 
             revenue.append(sum(sales_output * prices_tmp * discounts_tmp - other_costs_tmp))
