@@ -1,0 +1,17 @@
+name: pop
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - pip
+  - ipykernel
+  - numpy
+  - pandas
+  - matplotlib
+  - streamlit
+  - scikit-learn
+  - pyqt
+  - tqdm
+  - pip:
+      - pymoo
+      - stqdm
