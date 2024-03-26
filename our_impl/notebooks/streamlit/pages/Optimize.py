@@ -56,6 +56,29 @@ else:
     z_score = pd.read_csv("assets/Z_scores.csv")
     st.warning("Pre loaded data loaded")
 
+if "store_data" in st.session_state:
+    st.success("Store data loaded!")
+    raw = st.session_state["store_data"]
+    # raw = pd.read_csv("assets/combined_milk_final.csv")
+else:
+    raw = pd.read_csv("assets/combined_milk_final.csv")
+
+if "calendar" in st.session_state:
+    st.success("Calendar data loaded!")
+    calendar = st.session_state["calendar"]
+    # calendar = pd.read_csv("assets/time.csv")
+else:
+    calendar = pd.read_csv("assets/time.csv")
+
+defaults = {'store_id': 236117,'year_from': 2001, 'year_to': 2005, 'year_test': 2006}
+
+values = {key: st.session_state.get(key, default) for key, default in defaults.items()}
+
+store_id = values['store_id']
+year_from = values['year_from']
+year_to = values['year_to']
+year_test = values['year_test']
+
 scripts_dir = os.path.join(os.path.dirname(__file__), "..", "scripts")
 sys.path.append(scripts_dir)
 
@@ -68,16 +91,19 @@ options = ["All"] + sku_list
 num_of_sku = len(sku_list)
 
 
-def process_data():
-    file_dir = "assets/combined_milk_final.csv"
-    time_dir = "assets/time.csv"
-    # zscore_dir = z_score
-    raw = pd.read_csv(file_dir)
-    calendar = pd.read_csv(time_dir)
-    zscore = z_score
+def process_data(raw, calendar, zscore, store_id):
+    # file_dir = "assets/combined_milk_final.csv"
+    # time_dir = "assets/time.csv"
+    # # zscore_dir = z_score
+    # raw = pd.read_csv(file_dir)
+    # calendar = pd.read_csv(time_dir)
+    # zscore = z_score
     # st.write('zscore', zscore)
+    # raw = raw_df.copy()
+    # calendar = calendar_df.copy()
 
-    sales = raw[raw["Store_ID"] == 236117].copy()
+
+    sales = raw[raw["Store_ID"] == int(store_id)].copy()
     # sales['Display'] = np.maximum(sales['Display1'], sales['Display2'])
     # sales['Feature'] = np.maximum.reduce([sales['Feature1'], sales['Feature2'], sales['Feature3'], sales['Feature4']])
     sales.loc[:, "Display"] = np.maximum(sales["Display1"], sales["Display2"])
@@ -176,7 +202,7 @@ def process_data():
     return sales, med_prices, cal_week, events
 
 
-sales, med_prices, cal_week, events = process_data()
+sales, med_prices, cal_week, events = process_data(raw, calendar, z_score, store_id)
 start_week_list = cal_week["Start_Date"].to_list()
 
 with st.form(key="all_inputs_form"):
@@ -193,7 +219,9 @@ with st.form(key="all_inputs_form"):
                 st.warning("If 'All' is selected, no other selections are allowed.")
                 st.multiselect("Select SKU", options, default="All")
     with c3:
-        start_week = st.selectbox("Start week", start_week_list)
+        year_difference = int(year_test) - int(year_from)
+      
+        start_week = st.selectbox("Start week", start_week_list[year_difference * 52+1:])
 
     st.write("---")
 
@@ -254,7 +282,7 @@ if submit_button:
     PRICE_LIST = pop_ga.init_price_list(CFG["sku_num"], CFG["h"])
 
     # try:
-    print(sales)
+    print(f"{sales=}")
     print(f"init problem")
     # TODO: convert to use computed demand model DFs
     rev_est = revenue_estimation.RevenueEstimation(
