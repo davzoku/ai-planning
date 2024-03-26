@@ -174,4 +174,4 @@ combined_dt <- merge(combined_dt, time_year, all.x = TRUE, by.x = 'Time_ID', by.
 # Remove variable
 combined_dt$variable <- NULL
 
-fwrite(combined_dt, "../../assets/combined_milk.csv")
+fwrite(combined_dt, "../../assets/combined_milk_final.csv")

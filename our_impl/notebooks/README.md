@@ -44,7 +44,7 @@ streamlit run Home.py
 - Navigate to `http://localhost:8501` on the web browser
 
 - Select the `Data Upload` page and upload the files from `sample_input/` respectively.
-  - upload the `combined_milk.csv` to the first file upload widget. This file contains the post-processed historical sales data for the 36 SKUs in the milk category for all 4 stores.
+  - upload the `combined_milk_final.csv` to the first file upload widget. This file contains the post-processed historical sales data for the 36 SKUs in the milk category for all 4 stores.
   - upload the `time.csv` to the second file upload widget. This file contains the calendar metadata such as holidays from 2001 to 2007. These 2 files can be joined by the `Time_ID`/`IRI Week` column.
 
 ![Data Upload](assets/01_optipromo_upload_data.png)
