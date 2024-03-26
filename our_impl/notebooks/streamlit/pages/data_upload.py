@@ -235,10 +235,12 @@ class Solution:
     def calculation(self):
         if store_data:
             data = pd.read_csv(store_data)
+            store_data_df = data.copy()
             
                     
         if time_data:
             calendar = pd.read_csv(time_data)
+            calendar_df = calendar.copy()
         
         
         base_features = ['Price', 'Feature', 'Display', 'Pricelag', 'Featurelag', 'Displaylag', 
@@ -273,7 +275,7 @@ class Solution:
 
         final_df.index = [idx.replace('Price', 'Discount') for idx in final_df.index]
         
-        return final_df, df_z_score
+        return final_df, df_z_score, store_data_df, calendar_df
 
 store_data_uploader = st.file_uploader("Upload Store Data", type=['csv'])
 time_data_uploader = st.file_uploader("Upload Time Data", type=['csv'])
@@ -308,7 +310,9 @@ with st.form(key='all_inputs_form_2'):
     
 if submit_button:
     instance = Solution(store_id_input=int(store_id_input), window_size=int(window_size), year_from=int(year_from), year_to=int(year_to), year_test=int(year_test))
-    st.session_state['coeff'], st.session_state['z_score'] = instance.calculation()
+    st.session_state['store_id'] = store_id_input
+    st.session_state['year_from'], st.session_state['year_to'], st.session_state['year_test'] =  year_from, year_to, year_test
+    st.session_state['coeff'], st.session_state['z_score'], st.session_state['store_data'], st.session_state['calendar'] = instance.calculation()
 
 
 
