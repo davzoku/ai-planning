@@ -147,15 +147,12 @@ class SwapMutation(Mutation):
         self.rows = self.cfg["sku_num"] * self.cfg["h"]
 
     def _do(self, problem, pop, **kwargs):
-        # print(type(pop), pop.shape, pop)
         pop_reshaped = pop.reshape(
             (-1, self.rows, self.cfg["price_opt_num"] + self.cfg["ndf"])
         )
 
-        # print(f"{len(pop)=}, {pop_reshaped.shape=}")
         # no of candidates to mutate
         num_to_mutate = int(len(pop) * self.prob)
-        # print(f"{num_to_mutate=}")
 
         # random select indices of candidates to mutate
         indices_to_mutate = np.random.choice(len(pop), num_to_mutate, replace=False)
@@ -222,10 +219,6 @@ class SwapCrossover(Crossover):
                 self.rows, self.n_rows_to_swap, replace=False
             )
             random_swaps = zip(row_indices_p1, row_indices_p2)
-            # debug
-            # print(row_indices_p1, row_indices_p2)
-            # for pair in random_swaps:
-            #     print(pair)
             # Swap the selected rows between parents
             for idx_p1, idx_p2 in random_swaps:
                 p1_reshaped[0, idx_p1], p2_reshaped[0, idx_p2] = (
@@ -290,68 +283,37 @@ class PromotionOptimizationProblem(ElementwiseProblem):
         for i, row in enumerate(can_sol):
             # constraint 1: at most 1 price flag
             if np.sum(row[: self.price_opt_num]) not in [0, 1]:
-                # print("constaint 1")
                 cv1[i] = 1
             # constraint 2: no display or feature if no promo
             if np.all(row[: self.price_opt_num] == 0) and (row[4] == 1 or row[5] == 1):
-                # print("constaint 2")
                 cv1[i] = 1
 
-        # relax constraints work for default mutation, crossover
-        # cv = cv1
         # cv2: constraints per week
         cv2 = np.zeros(can_sol.shape[0], dtype=int)
         promo_count = display_count = feature_count = 0
         # print(f"{can_sol=}, {self.sku_num=}")
         for i in range(0, len(can_sol), self.sku_num):
-            # print(f"{i=}")
-            # for j in range(0, len(can_sol), cfg['sku_num']):
-            #     promo_count = np.sum(can_sol[i:i+cfg['sku_num'], :cfg['price_opt_num']])
-            #     display_count = np.sum(can_sol[i:i+cfg['sku_num'], cfg['price_opt_num']:5])
-            #     feature_count = np.sum(can_sol[i:i+cfg['sku_num'], 5:])
-            # for j in range(0, len(can_sol), self.sku_num):
 
             promo_array = can_sol[i : i + self.sku_num, : self.price_opt_num]
             display_array = can_sol[
                 i : i + self.sku_num, self.price_opt_num : self.price_opt_num + 1
             ]
             feature_array = can_sol[i : i + self.sku_num, self.price_opt_num + 1 :]
-            # print(f"x {promo_array=}")
-            # print(f"{promo_array.shape=}")
-            # print(f"x {display_array=}")
-            # print(f"{display_array.shape=}")
-            # print(f"x {feature_array=}")
-            # print(f"{feature_array.shape=}")
             promo_count = np.sum(promo_array)
             display_count = np.sum(display_array)
             feature_count = np.sum(feature_array)
-            # promo_count += np.sum(row[:4])
-            #     # promo_count += np.sum(row[:4])
-            # display_count += np.sum(row[4:5])
-            # feature_count += np.sum(row[5:])
-            # print(promo_count, display_count, feature_count)
-            # for row in can_sol[i:i+self.sku_num]:
-            #     promo_count += np.sum(row[:self.price_opt_num])
-            #     display_count += np.sum(row[self.price_opt_num:5])
-            #     feature_count += np.sum(row[5:])
-            # print(promo_count, display_count, feature_count)
+
             # promo count must be less than lim_pro_per_cate_xu
             if promo_count > self.cfg["lim_pro_per_cate_xu"]:
-                # print(promo_count)
                 for j in range(i, i + self.sku_num):
-                    # print("constaint 3")
                     cv2[j] = 1
             # dis count must be less than lim_dis_per_cate_xu
             elif display_count > self.cfg["lim_dis_per_cate_xu"]:
-                # print(display_count)
                 for j in range(i, i + self.sku_num):
-                    # print("constaint 4")
                     cv2[j] = 1
             # fea count must be less than lim_fea_per_cate_xu
             elif feature_count > self.cfg["lim_fea_per_cate_xu"]:
-                # print(display_count)
                 for j in range(i, i + self.sku_num):
-                    # print("constaint 5")
                     cv2[j] = 1
         # Combine all constraint violations
         cv = np.concatenate((cv1, cv2))
@@ -359,46 +321,14 @@ class PromotionOptimizationProblem(ElementwiseProblem):
 
     def _calculate_profit(self, can_sol):
         profit = 0
-        # discounted_values = np.zeros_like(PRICE_LIST)
 
-        # use this to get the simplified 3 columns
         # discount, price, display
         converted_sol = self._to_discount_values(can_sol)
-        # cost = converted_sol[['Display', 'Feature']].sum().sum() * 20
+
         profit = self.rev_est.fitness_demand(
             converted_sol, self.selected_sku_list, self.start_week, self.period
         )
-        # cost = converted_sol.iloc[:, 1:3].sum() * 20
-        # profit -= cost
-        # print(f"{profit=}")
 
-        # # TODO: For loop to cater to demand function calculation,  also to include display and feature effect on profit
-        # for i in range(len(can_sol)):
-        #     if np.all(can_sol[i, : self.price_opt_num] == 0):
-        #         discounted_values[i] = PRICE_LIST[i]
-        #     else:
-        #         discount_factor = (
-        #             0.8
-        #             if np.array_equal(can_sol[i, :4], [0, 0, 0, 1])
-        #             else (
-        #                 0.6
-        #                 if np.array_equal(can_sol[i, :4], [0, 0, 1, 0])
-        #                 else (
-        #                     0.4
-        #                     if np.array_equal(can_sol[i, :4], [0, 1, 0, 0])
-        #                     else (
-        #                         0.2
-        #                         if np.array_equal(can_sol[i, :4], [1, 0, 0, 0])
-        #                         else 1
-        #                     )
-        #                 )
-        #             )
-        #         )
-        #         discounted_values[i] = discount_factor * PRICE_LIST[i]
-
-        # # Calculate profit
-        # profit = np.sum(discounted_values)
-        # print(f"xxxxx {profit=}")
         return profit
 
     def _to_discount_values(self, can_sol):
@@ -427,7 +357,6 @@ class PromotionOptimizationProblem(ElementwiseProblem):
                 result[i, 0] = discount_values[discount_index]
             result[i, 1] = int(row[5])
             result[i, 2] = int(row[4])
-            # print(f"original row = {row}, converted = {result[i]}")
 
         result_df = pd.DataFrame(result, columns=["Discount", "Feature", "Display"])
 
@@ -459,13 +388,6 @@ if __name__ == "__main__":
         eliminate_duplicates=True,
     )
 
-    # algo_vanilla_ops = GA(
-    #     pop_size=POP_SIZE,
-    #     sampling=SKUPopulationSampling(cfg=problem.cfg, pop_size=POP_SIZE),
-    #     crossover=PointCrossover(prob=0.8, n_points=2),
-    #     mutation=PolynomialMutation(prob=0.3, repair=RoundingRepair()),
-    #     eliminate_duplicates=True,
-    # )
 
     start_time_custom = time.time()
     res_custom = minimize(
@@ -473,34 +395,17 @@ if __name__ == "__main__":
     )
     end_time_custom = time.time()
 
-    # start_time_vanilla = time.time()
-    # res_vanilla = minimize(
-    #     problem,
-    #     algo_vanilla_ops,
-    #     ("n_gen", 10),
-    #     seed=2,
-    #     save_history=True,
-    #     verbose=True,
-    # )
-    # end_time_vanilla = time.time()
 
     time_custom = end_time_custom - start_time_custom
-    # time_vanilla = end_time_vanilla - start_time_vanilla
 
     print(f"Custom operators time: {time_custom} seconds")
-    # print(f"Vanilla operators time: {time_vanilla} seconds")
 
     print(f"Custom operators solution quality: {res_custom.F}")
-    # print(f"Vanilla operators solution quality: {res_vanilla.F}")
 
     # Plotting history (https://pymoo.org/misc/convergence.html)
     n_evals = np.array([e.evaluator.n_eval for e in res_custom.history])
     opt = np.array([e.opt[0].F for e in res_custom.history])
     plt.plot(n_evals, opt, "--", label="res_custom")
-
-    # n_evals = np.array([e.evaluator.n_eval for e in res_vanilla.history])
-    # opt = np.array([e.opt[0].F for e in res_vanilla.history])
-    # plt.plot(n_evals, opt, "--", label="res_vanilla")
 
     plt.title("Convergence of res_custom & res_vanilla")
     plt.xlabel("n_eval")

@@ -2,9 +2,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from collections import OrderedDict
-from sklearn.linear_model import ElasticNetCV, ElasticNet, LassoCV
-from sklearn.metrics import mean_squared_error, mean_absolute_error, mean_absolute_percentage_error
-#from helper_demand_functions import *
 from tqdm import tqdm
 from stqdm import stqdm
 from utils import utils
@@ -21,40 +18,6 @@ def local_css(file_name):
 
 css = local_css("./style.css")
 st.markdown(f'<style>{css}</style>', unsafe_allow_html=True)
-
-# class Upload:
-#     @staticmethod
-#     def upload_store_data():
-#         st.text("Please upload product dataset")
-#         uploaded_file_1 = st.file_uploader("Choose a csv files", type = 'csv')
-        
-#         if uploaded_file_1 is not None:
-#             return uploaded_file_1
-#         else:
-#             st.error("No file uploaded. Please upload a CSV file")
-#     @staticmethod
-#     def upload_time_data():
-#         st.text("Please upload time dataset")
-#         uploaded_file_2 = st.file_uploader("Choose a time csv file", type = 'csv')
-        
-#         if uploaded_file_2 is not None:
-#             return uploaded_file_2
-        
-#         else:
-#             st.error("No file uploaded. Please upload a CSV file")
-        
-
-# def upload_store():
-#     data = Upload.upload_store_data()
-#     df = pd.read_csv(data)
-#     st.write("Product datatset loaded!")
-#     return data
-
-# def upload_time():
-#     data = Upload.upload_time_data()
-#     df = pd.read_csv(data)
-#     st.write("time datatset uploaded")
-#     return data
 
     
 def price_discount(df, sku = None, year_col='Year'):
@@ -174,31 +137,21 @@ def demand_coef(data, calendar, store_id_input, sku_id, window_size, train_year_
 
     store_sku_part_trg = store_sku_df_part[(store_sku_df_part["Year"] >= train_year_from) & (store_sku_df_part["Year"] <= train_year_to)]
     store_sku_part_trg = store_sku_part_trg.iloc[window_size:]
-    # store_sku_part_test = store_sku_df_part[(store_sku_df_part["Year"] == year_test)]
 
     store_compet_trg = store_compet_final[(store_compet_final["Year"] >= train_year_from) & (store_sku_df_part["Year"] <= train_year_to)]
     store_compet_trg = store_compet_trg.iloc[window_size:]
-    # store_compet_test = store_compet_final[(store_compet_final["Year"] == year_test)]
 
     sku_sales_train = store_sku_part_trg['Sales']
-    # sku_sales_test = store_sku_part_test['Sales']
 
-    # Feature Variables
-    # feature_list = []
     sku_train_drop = ['Time_ID', 'Year', 'Sales']
     compet_train_drop = ['Time_ID', 'Year']
     store_sku_part_trg = store_sku_part_trg.drop(columns = sku_train_drop)
-    # store_sku_part_test = store_sku_part_test.drop(columns = sku_train_drop)
-    store_compet_trg = store_compet_trg.drop(columns = compet_train_drop)
-    # store_compet_test = store_compet_test.drop(columns = compet_train_drop)
 
-    # positive_features_1 = ['Price', 'Feature', 'Display', 'Pricelag' ,'Featurelag', 'Displaylag', 'Saleslag']
-    # model_1.positive = positive_features_1 
+    store_compet_trg = store_compet_trg.drop(columns = compet_train_drop)
+
     model_1.fit(store_sku_part_trg, sku_sales_train)
     sku_sales_train_rsd = sku_sales_train - model_1.predict(store_sku_part_trg)
 
-    # positive_features_2 = [col for col in store_compet_trg.columns if col.endswith(("_Display", "_Feature", "_Price"))]
-    # model_2.positive = positive_features_2
     model_2.fit(store_compet_trg, sku_sales_train_rsd)
 
     model_1_df = pd.DataFrame(model_1.coef_, index = store_sku_part_trg.columns, columns=[sku_id] )
@@ -209,19 +162,6 @@ def demand_coef(data, calendar, store_id_input, sku_id, window_size, train_year_
     coef_df = pd.concat([model_1_df, model_2_df])
 
     return coef_df, dis_mean, dis_std, bias_term
-
-#data = pd.read_csv(file_dir)
-#calendar = pd.read_csv(time_dir)
-
-# self.store_id_input = 236117
-# self.window_size = 8
-# self.year_from = 2001
-# self.year_to = 2005
-# self.year_test = 2006
-# self.alphas = np.logspace(-4, 0, 100)
-
-# store_data =  Upload.upload_store_data()
-# time_data =  Upload.upload_time_data()
 
 class Solution:
     def __init__(self, store_id_input, window_size, year_from, year_to, year_test, alphas=np.logspace(-4, 0, 100)):
@@ -286,19 +226,16 @@ if store_data_uploader is not None and time_data_uploader is not None:
     # Assuming 'Upload' class methods are used to save or process uploaded files
     store_data = store_data_uploader  # Modify according to your actual file handling
     time_data = time_data_uploader  # Modify according to your actual file handling
-    
-    # Your Solution class instantiation and calculations
-    #instance = Solution(store_id_input=236117, window_size=8, year_from=2001, year_to=2005, year_test=2006)
-        #result = instance.calculation()  # Ensure this is callable
-    #st.session_state['result'] = instance.calculation()
+
         
 st.write('Target values for optimization')
 with st.form(key='all_inputs_form_2'): 
         c1, c2, c3, c4, c5 = st.columns(5)
         with c1:
-            store_id_input = st.text_input("Store id Input")
+            store_ids =[236117, 234212, 649405, 657979]
+            store_id_input = st.selectbox("Store ID", store_ids)            
         with c2:
-            window_size = st.selectbox('Window size',['4', '8', '16'])
+            window_size = st.selectbox('Window size',[8, 4, 16])
         with c3:
             year_from = st.text_input('Year from')
         with c4:
@@ -313,10 +250,3 @@ if submit_button:
     st.session_state['store_id'] = store_id_input
     st.session_state['year_from'], st.session_state['year_to'], st.session_state['year_test'] =  year_from, year_to, year_test
     st.session_state['coeff'], st.session_state['z_score'], st.session_state['store_data'], st.session_state['calendar'] = instance.calculation()
-
-
-
-# if st.button('Start Calculations'):
-#     instance = Solution(236117, 8, 2001, 2005, 2006)
-#     result = instance.calculation()
-    # st.write(result)

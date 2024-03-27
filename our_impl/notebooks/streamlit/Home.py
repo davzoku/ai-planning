@@ -1,13 +1,6 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from collections import OrderedDict
-import sys
-import os
-
-# from sklearn.linear_model import ElasticNetCV, ElasticNet
-# from sklearn.metrics import mean_squared_error, mean_absolute_error, mean_absolute_percentage_error
-# from helper_demand_functions import *
 
 from utils import utils
 
@@ -25,8 +18,6 @@ st.set_page_config(
 
 
 st.title("Promotion optimization for retail stores")
-# st.set_page_config(page_title = "AI Planning")
-# st.sidebar.success("navigation bar")
 
 
 st.subheader("How to use this application")
@@ -38,12 +29,9 @@ st.markdown(
 )
 
 utils.add_logo()
-# with open('./style.css') as f:
-#     css = f.read()
-#     #print(css)
 
 st.subheader("Sample dataset format for store")
-sample_data = pd.read_csv("./combined_milk_final.csv")
+sample_data = pd.read_csv("../assets/combined_milk_final.csv")
 st.write(sample_data)
 csv = sample_data.to_csv(index=False)
 
