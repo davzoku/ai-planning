@@ -14,12 +14,19 @@
 
 ```
 ├── assets
-├── analysis  
+├── analysis
 ├── streamlit
 ├── sample_input
 ```
 
 - The `analysis` folder contains all notebooks and scripts from problem formulation, GA operators, sensitivity analysis etc.
+  - The original IRI dataset originates from [A retail store SKU promotions optimization model for category multi-period profit maximization](https://www.sciencedirect.com/science/article/abs/pii/S0377221716310669). As their implementation uses R, we perform additional data wrangling including segmentation by product category and store, as well as transposing the data to organize it on a per-product-category-per-store basis. This additional manipulation enables more targeted analysis and application in our context.
+  - The `1. Demand Function.ipynb` contains our demand function formulation
+  - `2. Other Processing.ipynb` contains preprocessing of other essential artifacts such as price list, calendar week, events/holidays etc.
+  - `3. Forecast Actual Performance.ipynb contains our analysis on the acutal revenue and forecast actual revenue.
+  - `4. Operator Analysis HPT.ipynb` contains our analysis on the performance of the different operator pairs for our problem. It analyze the outputs from our HPT experiment runs from `operator_analysis.py`
+  - `5. Sensitivity.ipynb` contains the code used for our sensitivity analysis.
+  - `pop_ga.py` is our GA implementation for this POP problem. It utilizes `revenue_estimation.py` as the fitness function.
 - The `streamlit` folder contains the integrated streamlit frontend solution catered for the business users.
 - The `sample_input` folder contains the sample csv required to upload to the Streamlit webapp to try.
 
